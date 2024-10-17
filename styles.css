@@ -1,9 +1,9 @@
-/* Общие стили */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    user-select: none; /* Текст нельзя выделить */
+    user-select: none; 
 }
 
 body {
@@ -15,7 +15,6 @@ body {
     min-height: 100vh;
 }
 
-/* Header с фоном */
 header {
     background-image: url('https://image.cdn2.seaart.ai/2023-10-29/21180470086658053/276aba25e5ee8278f5698d071a9fa8f0e4fbed1a_high.webp');
     background-size: cover;
@@ -26,24 +25,22 @@ header {
     position: relative;
 }
 
-/* Ник в заголовке */
 header h1 {
-    font-size: 2.5rem; /* Увеличиваем размер ника */
-    transition: transform 0.3s ease; /* Плавная анимация */
+    font-size: 2.5rem;
+    transition: transform 0.3s ease; 
 }
 
 header h1:hover {
-    transform: scale(1.1); /* Увеличиваем ник при наведении */
+    transform: scale(1.1);
 }
 
-/* Стили главной страницы */
 .members {
     display: flex;
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
     margin: 20px;
-    flex-grow: 1; /* Увеличиваем пространство для главного контента */
+    flex-grow: 1;
 }
 
 .member {
@@ -56,32 +53,31 @@ header h1:hover {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     position: relative;
     width: 250px;
-    cursor: pointer; /* Указатель на клик */
+    cursor: pointer; 
 }
 
 .member-icon {
     width: 100px;
     height: 100px;
     border-radius: 50%;
-    margin-bottom: 15px; /* Увеличиваем отступ снизу от иконки */
+    margin-bottom: 15px;
 }
 
 .member h2 {
-    margin: 20px 0; /* Увеличиваем отступы между ником и кнопкой */
-    font-size: 1.5rem; /* Увеличиваем размер ника */
-    transition: transform 0.3s ease; /* Плавная анимация */
+    margin: 20px 0; 
+    font-size: 1.5rem; 
+    transition: transform 0.3s ease;
 }
 
 .member h2:hover {
-    transform: scale(1.1); /* Увеличиваем ник при наведении */
+    transform: scale(1.1);
 }
 
 .member:hover {
     transform: scale(1.05);
-    box-shadow: 0 0 20px rgba(255, 105, 180, 0.5); /* Розовая тень */
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.5); 
 }
 
-/* Страницы пользователей */
 .content {
     display: flex;
     flex-direction: column;
@@ -100,19 +96,18 @@ header h1:hover {
     margin-bottom: 20px;
 }
 
-/* Уменьшаем расстояние между блоками и добавляем отступ от header */
 .info-block {
-    display: flex; /* Используем Flexbox для размещения элементов */
-    justify-content: space-between; /* Распределяем пространство между элементами */
-    align-items: flex-start; /* Выравнивание элементов по верхнему краю */
-    background-color: #8A2BE2; /* Фиолетовый цвет */
+    display: flex;
+    justify-content: space-between; 
+    align-items: flex-start;
+    background-color: #8A2BE2;
     color: white;
-    padding: 20px; /* Увеличиваем отступы */
-    border-radius: 10px; /* Углы будут более округлыми */
+    padding: 20px;
+    border-radius: 10px;
     text-align: center;
     position: relative;
-    width: 90%; /* Уменьшаем ширину блока */
-    margin: 20px auto; /* Центрируем блок и добавляем отступ сверху */
+    width: 90%;
+    margin: 20px auto;
     transition: transform 0.3s ease;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2); 
 }
@@ -182,18 +177,18 @@ footer {
 }
 .container {
     margin-left: 100px;
-    display: flex; /* Включаем Flexbox */
-    align-items: center; /* Выравнивание по вертикали (если нужно) */
-    gap: 20px; /* Отступ между изображением и текстом */
+    display: flex;
+    align-items: center;
+    gap: 20px;
   }
   
   .photo {
-    max-width: 50px; /* Максимальная ширина изображения */
-    height: auto; /* Автоматическая высота для сохранения пропорций */
+    max-width: 50px;
+    height: auto;
   }
   
   .text {
-    max-width: 600px; /* Максимальная ширина блока с текстом */
+    max-width: 600px;
   }
   .linksteam{
     color: blue;

@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>rekai</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background: radial-gradient(circle at 50% 30%, #1a1b26 0%, #08090d 100%); 
+      color: #f3f4f6; 
+      user-select: none; 
+      overflow-x: hidden; 
+      min-height: 100vh; 
+    }
+
+    /* Настоящий Apple Liquid Glass */
+    .liquid-glass {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+      backdrop-filter: blur(24px) saturate(200%);
+      -webkit-backdrop-filter: blur(24px) saturate(200%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-top-color: rgba(255, 255, 255, 0.25);
+      border-left-color: rgba(255, 255, 255, 0.25);
+      box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        inset 0 0 20px rgba(255, 255, 255, 0.05);
+    }
+
+    .liquid-glass-interactive {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-top-color: rgba(255, 255, 255, 0.2);
+      border-left-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 
+        0 10px 20px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .liquid-glass-interactive:hover {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+      border-top-color: rgba(255, 255, 255, 0.4);
+      border-left-color: rgba(255, 255, 255, 0.4);
+      box-shadow: 
+        0 15px 30px rgba(0, 0, 0, 0.5),
+        0 0 30px rgba(255, 255, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .flower-node { 
+      position: absolute; 
+      width: 105px; 
+      height: 105px; 
+      border-radius: 50%; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      text-align: center; 
+      cursor: grab; 
+      touch-action: none; 
+      z-index: 20; 
+      padding: 10px; 
+      box-sizing: border-box; 
+      font-size: 12px; 
+      line-height: 1.2; 
+    }
+    
+    .flower-node:active { cursor: grabbing; }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+    .fade-enter { animation: fadeIn 0.4s ease-out forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .thread-line { position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+    #particleCanvas {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 5; 
+      transition: opacity 0.5s ease;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <canvas id="particleCanvas"></canvas>
+
+  <button id="randomBtn" class="fixed bottom-6 right-6 z-40 liquid-glass-interactive p-4 rounded-full text-indigo-300 hover:text-white flex items-center justify-center group" title="Случайный откат">
+    <i data-lucide="dices" class="w-7 h-7 group-hover:animate-bounce"></i>
+  </button>
+
+  <header class="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between pointer-events-none">
+    <div class="flex items-center gap-4 pointer-events-auto">
+      <button id="homeBtn" class="liquid-glass-interactive px-4 py-2 rounded-full flex items-center gap-2 text-sm font-medium">
+        <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span> rekai
+      </button>
+      <div class="liquid-glass px-4 py-2 rounded-full text-xs font-light text-gray-300">
+        группе <span id="daysCounter" class="font-semibold text-white">0</span> дней
+      </div>
+    </div>
+    <div class="flex items-center gap-3 pointer-events-auto">
+      <button id="toggleEffectBtn" class="liquid-glass-interactive p-2.5 rounded-full text-gray-300 hover:text-white" title="Переключить эффект">
+        <i data-lucide="sparkles" class="w-5 h-5"></i>
+      </button>
+      
+      <button id="adminPanelBtn" class="hidden liquid-glass-interactive px-4 py-2 rounded-full text-sm flex items-center gap-2 hover:text-indigo-300">
+        <i data-lucide="settings" class="w-4 h-4"></i><span>Панель управления</span>
+      </button>
+      <button id="authBtn" class="liquid-glass-interactive px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2">
+        <i data-lucide="user" class="w-4 h-4"></i><span>Войти</span>
+      </button>
+      <button id="profileBtn" class="hidden liquid-glass-interactive pl-1 pr-4 py-1 rounded-full text-sm font-medium flex items-center gap-2">
+        <img id="headerAvatar" src="" class="w-7 h-7 rounded-full object-cover bg-gray-700">
+        <span id="headerUsername">Профиль</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="app" class="flex-grow flex items-center justify-center relative pt-20 pb-12 px-4 z-10"></main>
+
+  <footer class="py-4 text-center text-xs text-gray-500 font-light relative z-10">&copy; 2023-2026 rekai. Все права защищены.</footer>
+
+  <!-- Auth Modal -->
+  <div id="authModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="liquid-glass p-8 rounded-3xl w-full max-w-sm relative transform scale-95 transition-transform duration-300" id="authModalContainer">
+      <button id="closeAuthModal" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <h3 class="text-xl font-medium mb-6 text-center text-white">Авторизация</h3>
+      <button id="googleLoginBtn" type="button" class="w-full bg-white text-black font-medium py-3 rounded-xl text-sm hover:bg-gray-200 transition-colors flex items-center justify-center gap-3">
+        <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Войти через Google
+      </button>
+      <p id="authError" class="text-xs text-red-400 text-center mt-4 hidden"></p>
+    </div>
+  </div>
+
+  <!-- Setup Modal (Первый вход) -->
+  <div id="setupModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="liquid-glass p-8 rounded-3xl w-full max-w-sm relative transform scale-95 transition-transform duration-300" id="setupModalContainer">
+      <h3 class="text-xl font-medium mb-2 text-center text-white">Добро пожаловать!</h3>
+      <p class="text-xs text-gray-400 text-center mb-6">Придумайте свой никнейм для сайта</p>
+      <form id="setupForm" class="flex flex-col gap-4">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Ваш никнейм</label>
+          <input type="text" id="setupUsername" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="Введите ник...">
+        </div>
+        <p id="setupError" class="text-xs text-red-400 hidden text-center bg-red-500/10 p-2 rounded-lg border border-red-500/20"></p>
+        <button type="submit" id="setupSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2 transition-colors">Сохранить</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
+    <div class="liquid-glass rounded-3xl w-full max-w-3xl relative max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300" id="profileModalContainer">
+      <div class="relative w-full h-40 md:h-56">
+        <div id="profileBannerBg" class="absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl" style="mask-image: linear-gradient(to bottom, black 50%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);"></div>
+        <button id="closeProfileModal" class="absolute top-4 right-4 z-20 text-gray-400 hover:text-white bg-black/40 rounded-full p-2 backdrop-blur-md"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="px-6 md:px-8 pb-6 md:pb-8 relative">
+        <div class="flex flex-col md:flex-row gap-6 md:gap-8 -mt-16 md:-mt-20">
+          <div class="flex flex-col items-center gap-4 md:w-1/3 z-10">
+            <img id="profileAvatar" src="https://via.placeholder.com/150" class="w-32 h-32 rounded-full object-cover border-4 border-[#15161b] bg-gray-800 shadow-xl">
+            <div class="text-center w-full">
+              <h2 id="profileUsernameDisplay" class="text-2xl font-bold text-white mb-1">Никнейм</h2>
+              <p id="profileBioDisplay" class="text-sm text-gray-400 break-words">Описание профиля...</p>
+            </div>
+            <button id="logoutBtn" class="mt-4 text-xs text-red-400 hover:text-red-300 flex items-center gap-1 bg-red-400/10 px-4 py-2 rounded-full border border-red-400/20">
+              <i data-lucide="log-out" class="w-4 h-4"></i> Выйти из аккаунта
+            </button>
+          </div>
+          <div class="md:w-2/3 flex flex-col gap-6 mt-4 md:mt-24 z-10">
+            <div id="editProfileBlock" class="bg-white/5 p-4 rounded-2xl border border-white/5">
+              <h3 class="text-sm font-medium mb-3 text-white">Редактировать профиль</h3>
+              <form id="editProfileForm" class="flex flex-col gap-3">
+                <div><label class="block text-[10px] text-gray-400 mb-1">Никнейм</label><input type="text" id="editUsername" required class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"></div>
+                <div><label class="block text-[10px] text-gray-400 mb-1">Аватарка (файл с ПК)</label><input type="file" id="editAvatarFile" accept="image/*" class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"></div>
+                <div><label class="block text-[10px] text-gray-400 mb-1">Баннер профиля (файл с ПК)</label><input type="file" id="editBannerFile" accept="image/*" class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"></div>
+                <div><label class="block text-[10px] text-gray-400 mb-1">О себе</label><textarea id="editBio" rows="2" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 resize-none" placeholder="Пара слов о себе..."></textarea></div>
+                <p id="editError" class="text-[10px] text-red-400 hidden text-center bg-red-500/10 p-1 rounded"></p>
+                <button type="submit" id="editSubmitBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded-lg text-xs mt-1 transition-colors">Сохранить изменения</button>
+              </form>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium mb-3 text-white flex items-center gap-2"><i data-lucide="video" class="w-4 h-4 text-indigo-400"></i> Видео с участием</h3>
+              <div id="profileVideosList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для обсуждения (Ветки) -->
+  <div id="threadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
+    <div class="liquid-glass p-6 md:p-8 rounded-3xl w-full max-w-2xl relative max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="threadModalContainer">
+      <button id="closeThreadModal" class="absolute top-4 right-4 text-gray-400 hover:text-white z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <h3 class="text-lg font-medium mb-4 text-white flex items-center gap-2"><i data-lucide="message-circle" class="w-5 h-5 text-indigo-400"></i> Обсуждение</h3>
+      <div id="threadCommentsList" class="flex-grow overflow-y-auto space-y-4 pr-2 mb-4"></div>
+      <div class="pt-3 border-t border-white/10">
+        <div id="threadReplyingTo" class="hidden text-xs text-indigo-300 mb-2 flex justify-between items-center bg-indigo-500/10 px-3 py-1 rounded-lg">
+            <span>Ответ для: <strong id="threadReplyingToName"></strong></span>
+            <button onclick="cancelThreadReply()" class="hover:text-white"><i data-lucide="x" class="w-3 h-3"></i></button>
+        </div>
+        <form id="threadCommentForm" class="flex gap-2">
+            <input type="text" id="threadCommentInput" placeholder="Написать ответ..." required class="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm flex items-center justify-center"><i data-lucide="send" class="w-4 h-4"></i></button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Modal -->
+  <div id="adminModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="liquid-glass p-8 rounded-3xl w-full max-w-md relative max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300" id="adminModalContainer">
+      <button id="closeAdminModal" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      
+      <div class="flex border-b border-white/10 mb-6 pb-2 gap-2 text-xs sm:text-sm font-medium overflow-x-auto whitespace-nowrap">
+        <button id="tabVideo" class="text-white border-b-2 border-indigo-500 pb-2">Видео</button>
+        <button id="tabAuthor" class="text-gray-400 hover:text-white pb-2">Авторы</button>
+        <button id="tabGame" class="text-gray-400 hover:text-white pb-2">Игры</button>
+        <button id="tabSettings" class="text-gray-400 hover:text-white pb-2">Эффекты</button>
+      </div>
+
+      <form id="addVideoForm" class="flex flex-col gap-4">
+        <div><label class="block text-xs text-gray-400 mb-1">Ссылка на YouTube</label><input type="text" id="videoUrl" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="https://youtu.be/..."></div>
+        <div><label class="block text-xs text-gray-400 mb-1">Название видео</label><input type="text" id="videoTitle" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"></div>
+        <div><label class="block text-xs text-gray-400 mb-1">Относится к играм</label><div id="adminGameSelector" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-white/5 rounded-xl border border-white/10"></div></div>
+        <div><label class="block text-xs text-gray-400 mb-1">Автор отката</label><select id="videoAuthor" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900"></select></div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Опубликовать видео</button>
+      </form>
+      
+      <form id="addAuthorForm" class="flex flex-col gap-4 hidden">
+        <div><label class="block text-xs text-gray-400 mb-1">Выберите игру</label><select id="authorGame" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900"></select></div>
+        <div><label class="block text-xs text-gray-400 mb-1">Имя/Ник автора</label><input type="text" id="authorName" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="например: narcoeyes"></div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Сохранить автора</button>
+      </form>
+
+      <form id="addGameForm" class="flex flex-col gap-4 hidden">
+        <div><label class="block text-xs text-gray-400 mb-1">Название новой игры</label><input type="text" id="newGameName" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="Например: Lethal Company"></div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Добавить игру</button>
+      </form>
+
+      <form id="settingsForm" class="flex flex-col gap-4 hidden">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Принудительный сезонный эффект</label>
+          <select id="globalEffectSelect" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900">
+            <option value="auto">Автоматически (по дате)</option>
+            <option value="snow">Снег (Зима)</option>
+            <option value="leaves">Листья (Осень)</option>
+            <option value="none">Отключить эффекты</option>
+          </select>
+        </div>
+        <p class="text-[10px] text-gray-500">Этот эффект увидят ВСЕ пользователи на сайте.</p>
+        <button type="submit" id="saveSettingsBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Применить для всех</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Video Modal -->
+  <div id="videoModal" class="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4 md:p-8">
+    <div class="liquid-glass rounded-3xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col relative transform scale-95 transition-transform duration-300" id="videoModalContainer">
+      <button id="closeVideoModal" class="absolute top-4 right-4 z-20 text-gray-400 hover:text-white bg-black/40 rounded-full p-2"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="grid grid-cols-1 lg:grid-cols-3 h-full overflow-y-auto lg:overflow-hidden">
+        <div class="lg:col-span-2 p-6 flex flex-col justify-between bg-black/20 border-b lg:border-b-0 lg:border-r border-white/10">
+          <div>
+            <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl bg-black aspect-video"><iframe id="modalIframe" class="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+            <h2 id="modalVideoTitle" class="text-xl font-semibold mt-4 text-white"></h2>
+            <div class="flex items-center justify-between text-xs text-gray-400 mt-2"><span id="modalVideoAuthor"></span><span id="modalVideoGames" class="bg-white/10 px-2.5 py-1 rounded-full"></span></div>
+          </div>
+        </div>
+        <div class="p-6 flex flex-col h-[500px] lg:h-full bg-white/5">
+          <h3 class="text-lg font-medium mb-4 flex items-center gap-2"><i data-lucide="message-square" class="w-5 h-5 text-indigo-400"></i> Комментарии</h3>
+          <div id="commentsList" class="flex-grow overflow-y-auto space-y-4 pr-2 mb-4"></div>
+          <div class="pt-3 border-t border-white/10">
+            <div id="replyingToIndicator" class="hidden text-xs text-indigo-300 mb-2 flex justify-between items-center bg-indigo-500/10 px-3 py-1 rounded-lg"><span>Ответ для: <strong id="replyingToName"></strong></span><button id="cancelReply" class="hover:text-white"><i data-lucide="x" class="w-3 h-3"></i></button></div>
+            <form id="commentForm" class="flex gap-2"><input type="text" id="commentInput" placeholder="Написать комментарий..." required class="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"><button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm flex items-center justify-center"><i data-lucide="send" class="w-4 h-4"></i></button></form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, setDoc, updateDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTFmATV9rN0BwKfLbTp1jI1B7lD2E-bxI",
+      authDomain: "rekai-app-d25ad.firebaseapp.com",
+      projectId: "rekai-app-d25ad",
+      storageBucket: "rekai-app-d25ad.appspot.com",
+      messagingSenderId: "789946973862",
+      appId: "1:789946973862:web:fb749b7e35efbbf8663e67"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    // --- State ---
+    const START_DATE = new Date('2023-07-19T00:00:00+05:00');
+    const ADMIN_EMAIL_PREFIX = 'solexerg'; 
+    const DEFAULT_GAMES = ["Counter Strike","GTA V","FTF","minecraft","fortnite","phasmophobia","REPO","Buckshot Roulette","Sons of the forest","roblox","rdr 2","Gang Beasts","a way out","nuclear nightmare","IRL","прочее"];
+
+    let games = [...DEFAULT_GAMES];
+    let authorsByGame = {};
+    DEFAULT_GAMES.forEach(g => authorsByGame[g] = ['narcoeyes']);
+    let videos = [];
+    let currentUser = null; 
+    let currentView = 'games';
+    let selectedGame = null;
+    let selectedAuthor = null;
+    let activeVideoId = null;
+    let commentsUnsubscribe = null;
+    let userUnsubscribe = null;
+    
+    let threadCommentsUnsubscribe = null;
+    let activeThreadRootId = null;
+    let threadReplyToId = null;
+    let activeParentId = null;
+
+    let globalEffectMode = 'auto';
+    let effectsEnabled = true;
+
+    const $ = id => document.getElementById(id);
+    const extractYouTubeId = url => { const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/); return (m && m[2].length === 11) ? m[2] : null; };
+    const calculateDays = () => { const d = Math.floor(Math.abs(new Date() - START_DATE)/(1000*60*60*24)); $('daysCounter').innerText = d; };
+
+    // --- Генерация звука ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx;
+    function playClickSound() {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    }
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('button') || e.target.closest('.flower-node') || e.target.closest('.liquid-glass-interactive')) playClickSound();
+    });
+
+    // --- Эффекты (Снег / Листья) ---
+    const canvas = $('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let animationFrame;
+    let particleMode = 'none';
+
+    onSnapshot(doc(db, 'settings', 'effects'), (docSnap) => {
+      if (docSnap.exists()) globalEffectMode = docSnap.data().mode;
+      else globalEffectMode = 'auto';
+      $('globalEffectSelect').value = globalEffectMode;
+      updateParticleMode();
+    });
+
+    $('settingsForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const mode = $('globalEffectSelect').value;
+      await setDoc(doc(db, 'settings', 'effects'), { mode });
+      hideModal('adminModal', 'adminModalContainer');
+      alert('Эффект обновлен для всех!');
+    };
+
+    function updateParticleMode() {
+      const month = new Date().getMonth(); 
+      let modeToUse = globalEffectMode;
+
+      if (modeToUse === 'auto') {
+        if (month === 11 || month === 0 || month === 1) modeToUse = 'snow';
+        else if (month === 8 || month === 9 || month === 10) modeToUse = 'leaves';
+        else modeToUse = 'none';
+      }
+
+      particleMode = modeToUse;
+
+      if (particleMode === 'none' || !effectsEnabled) {
+        canvas.style.display = 'none';
+        cancelAnimationFrame(animationFrame);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles = [];
+        return;
+      }
+      
+      canvas.style.display = 'block';
+      resizeCanvas();
+      if (particles.length === 0) {
+        for (let i = 0; i < 30; i++) particles.push(createParticle());
+        animateParticles();
+      }
+    }
+
+    function initParticles() {
+      const savedState = localStorage.getItem('effectsEnabled');
+      if (savedState !== null) effectsEnabled = savedState === 'true';
+      window.addEventListener('resize', resizeCanvas);
+      updateParticleMode();
+    }
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function createParticle() {
+      if (particleMode === 'snow') {
+        return { x: Math.random() * canvas.width, y: Math.random() * canvas.height, radius: Math.random() * 2 + 1, speedY: Math.random() * 1 + 0.5, speedX: Math.random() * 0.5 - 0.25, opacity: Math.random() * 0.5 + 0.3 };
+      } else {
+        return { x: Math.random() * canvas.width, y: Math.random() * -canvas.height, size: Math.random() * 10 + 5, speedY: Math.random() * 1.5 + 1, speedX: Math.random() * 1 - 0.5, rotation: Math.random() * Math.PI * 2, rotSpeed: Math.random() * 0.05 - 0.025, color: `hsl(${Math.random() * 20 + 10}, 80%, 50%)` };
+      }
+    }
+
+    function animateParticles() {
+      if (!effectsEnabled || particleMode === 'none') return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach((p) => {
+        if (particleMode === 'snow') {
+          p.y += p.speedY; p.x += p.speedX;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`; ctx.fill();
+          if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+        } else {
+          p.y += p.speedY; p.x += p.speedX + Math.sin(p.y / 50) * 0.5; p.rotation += p.rotSpeed;
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation); ctx.fillStyle = p.color;
+          ctx.beginPath(); ctx.moveTo(0, -p.size); ctx.quadraticCurveTo(p.size, 0, 0, p.size); ctx.quadraticCurveTo(-p.size, 0, 0, -p.size); ctx.fill();
+          ctx.restore();
+          if (p.y > canvas.height) { p.y = -20; p.x = Math.random() * canvas.width; }
+        }
+      });
+      animationFrame = requestAnimationFrame(animateParticles);
+    }
+
+    $('toggleEffectBtn').onclick = () => {
+      effectsEnabled = !effectsEnabled;
+      localStorage.setItem('effectsEnabled', effectsEnabled);
+      updateParticleMode();
+    };
+
+    // --- Auth & Profile ---
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        if (userUnsubscribe) userUnsubscribe();
+        const userRef = doc(db, 'users', user.uid);
+        userUnsubscribe = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            currentUser = { uid: user.uid, username: data.username, avatar: data.avatar || `https://ui-avatars.com/api/?name=${data.username}&background=random`, banner: data.banner || '', bio: data.bio || '', isAdmin: user.email.split('@')[0] === ADMIN_EMAIL_PREFIX };
+            hideModal('setupModal', 'setupModalContainer');
+            updateAuthUI(); 
+          } else {
+            currentUser = { uid: user.uid, isNew: true };
+            showModal('setupModal', 'setupModalContainer');
+          }
+        });
+      } else {
+        if (userUnsubscribe) userUnsubscribe();
+        currentUser = null;
+        hideModal('setupModal', 'setupModalContainer');
+        updateAuthUI();
+      }
+    });
+
+    async function handleSetupProfile(e) {
+      e.preventDefault();
+      const username = $('setupUsername').value.trim();
+      if (!username) return;
+      const btn = $('setupSubmitBtn');
+      const errorEl = $('setupError');
+      btn.innerText = 'Проверка...'; btn.disabled = true; errorEl.classList.add('hidden');
+      try {
+        const q = query(collection(db, 'users'), where('username', '==', username));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          errorEl.innerText = 'Этот ник уже занят. Придумайте другой.';
+          errorEl.classList.remove('hidden'); btn.innerText = 'Сохранить'; btn.disabled = false; return;
+        }
+        await setDoc(doc(db, 'users', currentUser.uid), { username, avatar: `https://ui-avatars.com/api/?name=${username}&background=random`, banner: '', bio: '', createdAt: serverTimestamp() });
+        hideModal('setupModal', 'setupModalContainer');
+      } catch (err) {
+        errorEl.innerText = 'Ошибка БД: ' + err.message; errorEl.classList.remove('hidden');
+      } finally {
+        btn.innerText = 'Сохранить'; btn.disabled = false;
+      }
+    }
+
+    function updateAuthUI() {
+      if (currentUser && !currentUser.isNew) {
+        $('authBtn').classList.add('hidden'); $('profileBtn').classList.remove('hidden');
+        $('headerUsername').innerText = currentUser.username; $('headerAvatar').src = currentUser.avatar;
+        currentUser.isAdmin ? $('adminPanelBtn').classList.remove('hidden') : $('adminPanelBtn').classList.add('hidden');
+      } else {
+        $('authBtn').classList.remove('hidden'); $('profileBtn').classList.add('hidden'); $('adminPanelBtn').classList.add('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    async function loginWithGoogle() {
+      $('authError').classList.add('hidden');
+      try {
+        await signInWithPopup(auth, provider);
+        hideModal('authModal','authModalContainer');
+      } catch (err) {
+        $('authError').innerText = err.message; $('authError').classList.remove('hidden');
+      }
+    }
+
+    // --- Profile Modal logic ---
+    async function openProfile(username = null) {
+      const isOwnProfile = !username || (currentUser && currentUser.username === username);
+      const targetUsername = isOwnProfile ? currentUser.username : username;
+      try {
+        if (isOwnProfile) {
+          $('profileAvatar').src = currentUser.avatar; $('profileUsernameDisplay').innerText = currentUser.username;
+          $('profileBioDisplay').innerText = currentUser.bio || 'Без описания';
+          $('editUsername').value = currentUser.username; $('editBio').value = currentUser.bio || '';
+          $('editAvatarFile').value = ''; $('editBannerFile').value = '';
+          if (currentUser.banner) { $('profileBannerBg').style.backgroundImage = `url(${currentUser.banner})`; $('profileBannerBg').style.backgroundSize = 'cover'; $('profileBannerBg').style.backgroundPosition = 'center'; }
+          else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
+          $('editProfileBlock').classList.remove('hidden'); $('logoutBtn').classList.remove('hidden'); $('editError').classList.add('hidden');
+          await loadUserVideos(currentUser.username);
+        } else {
+          const q = query(collection(db, 'users'), where('username', '==', targetUsername));
+          const snap = await getDocs(q);
+          if (snap.empty) { alert('Пользователь не найден.'); return; }
+          const userData = snap.docs[0].data();
+          $('profileAvatar').src = userData.avatar || `https://ui-avatars.com/api/?name=${userData.username}&background=random`;
+          $('profileUsernameDisplay').innerText = userData.username; $('profileBioDisplay').innerText = userData.bio || 'Без описания';
+          if (userData.banner) { $('profileBannerBg').style.backgroundImage = `url(${userData.banner})`; $('profileBannerBg').style.backgroundSize = 'cover'; $('profileBannerBg').style.backgroundPosition = 'center'; }
+          else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
+          $('editProfileBlock').classList.add('hidden'); $('logoutBtn').classList.add('hidden');
+          await loadUserVideos(userData.username);
+        }
+        showModal('profileModal', 'profileModalContainer');
+      } catch (err) { console.error("Ошибка при открытии профиля:", err); }
+    }
+
+    async function handleEditProfile(e) {
+      e.preventDefault();
+      const newUsername = $('editUsername').value.trim(); const newBio = $('editBio').value.trim();
+      const avatarInput = $('editAvatarFile'); const bannerInput = $('editBannerFile');
+      const errorEl = $('editError'); const btn = $('editSubmitBtn');
+      if (!newUsername) return;
+      btn.innerText = 'Сохранение...'; btn.disabled = true; errorEl.classList.add('hidden');
+      try {
+        if (newUsername !== currentUser.username) {
+          const q = query(collection(db, 'users'), where('username', '==', newUsername));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            errorEl.innerText = 'Этот ник уже занят.'; errorEl.classList.remove('hidden'); btn.innerText = 'Сохранить изменения'; btn.disabled = false; return;
+          }
+        }
+        let newAvatarBase64 = currentUser.avatar; let newBannerBase64 = currentUser.banner;
+        if (avatarInput.files.length > 0) {
+          const file = avatarInput.files[0];
+          if (file.size > 1024 * 1024) { errorEl.innerText = 'Аватарка > 1 МБ.'; errorEl.classList.remove('hidden'); return; }
+          newAvatarBase64 = await compressImage(file, 200);
+        }
+        if (bannerInput.files.length > 0) {
+          const file = bannerInput.files[0];
+          if (file.size > 2 * 1024 * 1024) { errorEl.innerText = 'Баннер > 2 МБ.'; errorEl.classList.remove('hidden'); return; }
+          newBannerBase64 = await compressImage(file, 800);
+        }
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, { username: newUsername, avatar: newAvatarBase64, banner: newBannerBase64, bio: newBio });
+        hideModal('profileModal', 'profileModalContainer'); alert('Профиль обновлен!');
+      } catch (err) {
+        errorEl.innerText = 'Ошибка: ' + err.message; errorEl.classList.remove('hidden');
+      } finally {
+        btn.innerText = 'Сохранить изменения'; btn.disabled = false;
+      }
+    }
+    
+    function compressImage(file, maxSize) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width; let height = img.height;
+            if (width > height) { if (width > maxSize) { height *= maxSize / width; width = maxSize; } }
+            else { if (height > maxSize) { width *= maxSize / height; height = maxSize; } }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
+          };
+          img.src = ev.target.result;
+        };
+        reader.onerror = reject; reader.readAsDataURL(file);
+      });
+    }
+
+    async function loadUserVideos(username) {
+      const list = $('profileVideosList');
+      list.innerHTML = '<p class="text-xs text-gray-500 col-span-2">Загрузка...</p>';
+      const q = query(collection(db, 'videos'), where('author', '==', username));
+      const snap = await getDocs(q);
+      if (snap.empty) { list.innerHTML = '<p class="text-xs text-gray-500 col-span-2">У этого пользователя нет видео.</p>'; return; }
+      list.innerHTML = '';
+      snap.forEach(d => {
+        const v = d.data(); const yt = extractYouTubeId(v.url);
+        const card = document.createElement('div');
+        card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group';
+        card.onclick = () => { hideModal('profileModal','profileModalContainer'); window.openVideoModal(d.id); };
+        card.innerHTML = `<div class="relative aspect-video"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
+        list.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    // --- Data loading ---
+    function loadData() {
+      // Загрузка игр (разделов)
+      onSnapshot(collection(db, 'games'), snap => {
+        if (!snap.empty) {
+          games = [];
+          snap.forEach(d => {
+            const g = d.data().name;
+            if (!games.includes(g)) games.push(g);
+          });
+          // Добавляем дефолтные игры, если их нет в базе
+          DEFAULT_GAMES.forEach(g => { if (!games.includes(g)) games.push(g); });
+        } else {
+          games = [...DEFAULT_GAMES];
+        }
+        
+        // Убеждаемся, что для каждой игры есть массив авторов
+        games.forEach(g => { if (!authorsByGame[g]) authorsByGame[g] = ['narcoeyes']; });
+        
+        if (currentView === 'games') renderCurrentView();
+      });
+
+      onSnapshot(collection(db, 'videos'), snap => {
+        videos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (currentView === 'videos') renderVideosView();
+      });
+
+      onSnapshot(collection(db, 'authors'), snap => {
+        authorsByGame = {};
+        games.forEach(g => authorsByGame[g] = ['narcoeyes']);
+        snap.forEach(d => { const { game, name } = d.data(); if (!authorsByGame[game]) authorsByGame[game] = ['narcoeyes']; if (!authorsByGame[game].includes(name)) authorsByGame[game].push(name); });
+        if (currentView === 'authors' || currentView === 'videos') renderCurrentView();
+      });
+    }
+
+    // --- Views ---
+    function renderCurrentView() {
+      const app = $('app'); app.innerHTML = '';
+      if (currentView === 'games') {
+        renderFlower(games, g => { selectedGame = g; currentView = 'authors'; renderCurrentView(); }, 'rekai', '');
+      } else if (currentView === 'authors') {
+        const authors = ['Общие', ...(authorsByGame[selectedGame] || ['narcoeyes'])];
+        renderFlower(authors, a => { selectedAuthor = a; currentView = 'videos'; renderCurrentView(); }, selectedGame, 'Выберите автора отката');
+      } else renderVideosView();
+      lucide.createIcons();
+    }
+
+    // --- Улучшенная физика (расталкивание и расширение) ---
+    function renderFlower(items, onSelect, centerTitle, centerSubtitle) {
+      const app = $('app');
+      const container = document.createElement('div');
+      container.className = 'relative w-[650px] h-[650px] max-w-full flex items-center justify-center fade-enter';
+      container.id = 'flowerContainer';
+      const center = document.createElement('div');
+      center.className = 'absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none z-10';
+      const subtitleHtml = centerSubtitle ? `<p class="text-sm font-light text-gray-400 mt-2">${centerSubtitle}</p>` : '';
+      center.innerHTML = `<h1 class="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400 drop-shadow-sm">${centerTitle}</h1>${subtitleHtml}${currentView !== 'games' ? '<button id="backToGamesBtn" class="pointer-events-auto mt-4 text-xs text-indigo-400 hover:text-indigo-300 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-1"><i data-lucide="arrow-left" class="w-3 h-3"></i> Назад</button>' : ''}`;
+      container.appendChild(center);
+
+      const nodeRadius = 52; 
+      // Радиус орбиты зависит от количества элементов
+      const radius = Math.max(180, items.length * 18); 
+      const count = items.length;
+      const centerX = 325; // Центр контейнера 650/2
+      const centerY = 325;
+
+      const nodesData = items.map((item, index) => {
+        const angle = (index / count) * 2 * Math.PI - Math.PI / 2;
+        // Случайное отклонение от идеального круга для "живого" эффекта
+        const randomOffset = Math.random() * 20 - 10; 
+        const currentRadius = radius + randomOffset;
+        
+        const x = centerX + currentRadius * Math.cos(angle) - nodeRadius;
+        const y = centerY + currentRadius * Math.sin(angle) - nodeRadius;
+        return { id: item, baseX: x, baseY: y, x, y, vx: 0, vy: 0, element: null };
+      });
+
+      nodesData.forEach(node => {
+        const el = document.createElement('div');
+        el.className = 'flower-node liquid-glass-interactive font-medium shadow-lg';
+        el.innerText = node.id;
+        el.style.left = `${node.x}px`; el.style.top = `${node.y}px`;
+        let isDragging = false;
+        let startX, startY;
+        let hasMoved = false;
+        el.addEventListener('pointerdown', e => {
+          isDragging = true; hasMoved = false; startX = e.clientX; startY = e.clientY;
+          node.offsetX = e.clientX - node.x; node.offsetY = e.clientY - node.y;
+          el.setPointerCapture(e.pointerId);
+        });
+        el.addEventListener('pointermove', e => {
+          if (!isDragging) return;
+          if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5) hasMoved = true;
+          if (hasMoved) {
+            node.x = e.clientX - node.offsetX; node.y = e.clientY - node.offsetY;
+            el.style.left = `${node.x}px`; el.style.top = `${node.y}px`; el.style.zIndex = 100;
+          }
+        });
+        el.addEventListener('pointerup', e => {
+          if (!isDragging) return;
+          isDragging = false; el.style.zIndex = '';
+          if (!hasMoved) onSelect(node.id);
+        });
+        node.element = el;
+        container.appendChild(el);
+      });
+
+      app.appendChild(container);
+      if ($('backToGamesBtn')) $('backToGamesBtn').onclick = () => { currentView = 'games'; renderCurrentView(); };
+
+      // Физика (Притяжение к орбите + Расталкивание)
+      (function physics() {
+        const k = 0.02; // Жесткость орбиты (меньше = более хаотично)
+        const damping = 0.85; // Затухание
+        const repulsionForce = 1.2; // Сила расталкивания (больше = сильнее отталкиваются)
+
+        nodesData.forEach(n => {
+          // 1. Притяжение к базовой позиции на орбите
+          const fx = (n.baseX - n.x) * k;
+          const fy = (n.baseY - n.y) * k;
+          n.vx = (n.vx + fx) * damping;
+          n.vy = (n.vy + fy) * damping;
+          n.x += n.vx;
+          n.y += n.vy;
+        });
+
+        // 2. Расталкивание (чтобы не наезжали друг на друга)
+        for (let i = 0; i < nodesData.length; i++) {
+          for (let j = i + 1; j < nodesData.length; j++) {
+            const n1 = nodesData[i];
+            const n2 = nodesData[j];
+            const dx = n1.x - n2.x;
+            const dy = n1.y - n2.y;
+            const dist = Math.hypot(dx, dy);
+            const minDist = nodeRadius * 2 + 10; // Минимальная дистанция
+
+            if (dist < minDist && dist > 0) {
+              const force = (minDist - dist) / minDist; // Сила отталкивания
+              const pushX = (dx / dist) * force * repulsionForce;
+              const pushY = (dy / dist) * force * repulsionForce;
+              
+              n1.x += pushX; n1.y += pushY;
+              n2.x -= pushX; n2.y -= pushY;
+            }
+          }
+        }
+
+        // 3. Применяем координаты к элементам
+        nodesData.forEach(n => {
+          if (n.element) {
+            n.element.style.left = `${n.x}px`;
+            n.element.style.top = `${n.y}px`;
+          }
+        });
+
+        requestAnimationFrame(physics);
+      })();
+    }
+
+    function renderVideosView() {
+      const app = $('app');
+      const filtered = videos.filter(v => v.games?.includes(selectedGame) && (selectedAuthor === 'Общие' || v.author === selectedAuthor));
+      const c = document.createElement('div'); c.className = 'w-full max-w-6xl mx-auto fade-enter';
+      let html = `<div class="flex items-center justify-between mb-8"><div class="flex items-center gap-3"><button id="backBtn" class="liquid-glass-interactive px-4 py-2 rounded-full text-xs flex items-center gap-2 hover:text-white"><i data-lucide="arrow-left" class="w-4 h-4"></i> Назад</button><div><h2 class="text-2xl font-bold text-white">${selectedGame}</h2><p class="text-xs text-gray-400">Автор: ${selectedAuthor}</p></div></div></div>`;
+      if (!filtered.length) {
+        html += `<div class="liquid-glass p-12 rounded-3xl text-center flex flex-col items-center justify-center my-12"><i data-lucide="video-off" class="w-12 h-12 text-gray-500 mb-4"></i><h3 class="text-lg font-medium text-gray-300">В этом разделе пока нет видео</h3><p class="text-xs text-gray-500 mt-1">Добавьте первое видео через панель администратора</p></div>`;
+      } else {
+        html += `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
+        filtered.forEach(v => {
+          const yt = extractYouTubeId(v.url);
+          const deleteBtn = (currentUser && currentUser.isAdmin) ? `<button onclick="event.stopPropagation(); window.deleteVideo('${v.id}')" class="absolute top-3 left-3 z-10 bg-black/60 hover:bg-red-600 text-white p-2 rounded-full backdrop-blur-md transition-colors" title="Удалить видео"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : '';
+          html += `<div class="liquid-glass-interactive rounded-2xl overflow-hidden cursor-pointer group flex flex-col relative" onclick="window.openVideoModal('${v.id}')"><div class="relative aspect-video bg-black overflow-hidden"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="${v.title}">${deleteBtn}<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"><div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white"><i data-lucide="play" class="w-6 h-6 fill-white"></i></div></div></div><div class="p-4 flex flex-col flex-grow justify-between"><div><h3 class="font-medium text-sm text-white line-clamp-2">${v.title}</h3><p class="text-xs text-gray-400 mt-1">Автор: ${v.author}</p></div><div class="flex items-center justify-between text-[10px] text-gray-500 mt-4 pt-2 border-t border-white/5"><span>${(v.games||[]).join(', ')}</span></div></div></div>`;
+        });
+        html += `</div>`;
+      }
+      c.innerHTML = html; app.appendChild(c);
+      $('backBtn').onclick = () => { currentView = 'authors'; renderCurrentView(); };
+      lucide.createIcons();
+    }
+
+    window.deleteVideo = async (videoId) => {
+      if (!confirm('Вы уверены, что хотите удалить это видео?')) return;
+      try { await deleteDoc(doc(db, 'videos', videoId)); } catch (err) { alert('Ошибка: ' + err.message); }
+    };
+
+    // --- Video Modal ---
+    window.openVideoModal = id => {
+      activeVideoId = id;
+      const v = videos.find(x => x.id === id); if (!v) return;
+      $('modalIframe').src = `https://www.youtube.com/embed/${extractYouTubeId(v.url)}?autoplay=1`;
+      $('modalVideoTitle').innerText = v.title;
+      $('modalVideoAuthor').innerText = `Автор: ${v.author}`;
+      $('modalVideoGames').innerText = (v.games||[]).join(', ');
+      loadComments(id);
+      showModal('videoModal','videoModalContainer');
+    };
+    function closeVideoModal() {
+      hideModal('videoModal','videoModalContainer');
+      setTimeout(() => { $('modalIframe').src = ''; activeVideoId = null; if (commentsUnsubscribe) { commentsUnsubscribe(); commentsUnsubscribe = null; } }, 300);
+    }
+
+    $('randomBtn').onclick = () => {
+      if (videos.length === 0) { alert('В базе пока нет видео!'); return; }
+      const randomVideo = videos[Math.floor(Math.random() * videos.length)];
+      window.openVideoModal(randomVideo.id);
+    };
+
+    // --- Comments Logic (Tree Structure) ---
+    function loadComments(videoId) {
+      if (commentsUnsubscribe) commentsUnsubscribe();
+      const q = query(collection(db, 'comments_' + videoId), orderBy('createdAt', 'asc'));
+      commentsUnsubscribe = onSnapshot(q, snap => {
+        const allComments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const list = $('commentsList'); list.innerHTML = '';
+        if (allComments.length === 0) { list.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">Комментариев пока нет. Будьте первым!</p>`; return; }
+        const roots = allComments.filter(c => !c.parentId);
+        const replies = allComments.filter(c => c.parentId);
+        roots.forEach(root => {
+          list.appendChild(createCommentElement(root));
+          const rootReplies = replies.filter(r => r.parentId === root.id);
+          if (rootReplies.length > 0) {
+            const threadContainer = document.createElement('div');
+            threadContainer.className = 'relative pl-4 ml-2 mt-2 space-y-2';
+            const firstReply = rootReplies[0];
+            threadContainer.appendChild(createCommentElement(firstReply, true));
+            if (rootReplies.length > 1) {
+              const moreBtn = document.createElement('button');
+              moreBtn.className = 'text-[11px] text-indigo-400 hover:text-indigo-300 font-medium ml-2 flex items-center gap-1 mt-1';
+              moreBtn.innerHTML = `<i data-lucide="corner-down-right" class="w-3 h-3"></i> Показать все ответы (${rootReplies.length})`;
+              moreBtn.onclick = () => openThreadModal(root.id, root.username);
+              threadContainer.appendChild(moreBtn);
+            }
+            list.appendChild(threadContainer);
+          }
+        });
+        lucide.createIcons();
+      });
+    }
+
+    function createCommentElement(c, isReply = false) {
+      const canDelete = currentUser && (currentUser.isAdmin || currentUser.uid === c.uid);
+      const item = document.createElement('div');
+      item.className = `bg-white/5 border border-white/5 p-3 rounded-xl text-xs flex flex-col gap-1 relative ${isReply ? 'bg-white/[0.03]' : ''}`;
+      const avatarHtml = `<img src="${c.avatar || 'https://via.placeholder.com/30'}" class="w-5 h-5 rounded-full object-cover mr-1.5 border border-white/10">`;
+      let replyToHtml = '';
+      if (isReply && c.parentId) replyToHtml = `<span class="text-[10px] text-gray-500 ml-1">(ответ на комментарий)</span>`;
+      item.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div onclick="event.stopPropagation(); window.openProfile('${c.username}')" class="flex items-center cursor-pointer hover:opacity-80 transition-opacity">${avatarHtml}<span class="font-semibold text-indigo-300 hover:underline">${c.username}</span> ${replyToHtml}</div>
+          <span class="text-[10px] text-gray-500">${c.dateStr||''}</span>
+        </div>
+        <p class="text-gray-200 mt-1">${c.text}</p>
+        <div class="flex items-center gap-3 mt-2 pt-1 border-t border-white/5 text-[10px]">
+          <button onclick="window.replyTo('${c.id}', '${c.username}', '${c.parentId || c.id}')" class="text-gray-400 hover:text-white flex items-center gap-1"><i data-lucide="reply" class="w-3 h-3"></i> Ответить</button>
+          ${canDelete ? `<button onclick="window.delComment('${c.id}')" class="text-red-400 hover:text-red-300 flex items-center gap-1"><i data-lucide="trash-2" class="w-3 h-3"></i> Удалить</button>` : ''}
+        </div>
+      `;
+      return item;
+    }
+
+    window.openThreadModal = (rootId, rootUsername) => {
+      activeThreadRootId = rootId;
+      $('threadReplyingTo').classList.add('hidden');
+      threadReplyToId = null;
+      const q = query(collection(db, 'comments_' + activeVideoId), orderBy('createdAt', 'asc'));
+      if (threadCommentsUnsubscribe) threadCommentsUnsubscribe();
+      threadCommentsUnsubscribe = onSnapshot(q, snap => {
+        const allComments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const rootComment = allComments.find(c => c.id === rootId);
+        const replies = allComments.filter(c => c.parentId === rootId);
+        const list = $('threadCommentsList'); list.innerHTML = '';
+        if (rootComment) {
+            list.appendChild(createCommentElement(rootComment));
+            const line = document.createElement('div');
+            line.className = 'relative pl-4 ml-2 my-2 space-y-3';
+            line.innerHTML = `<div class="thread-line"></div>`;
+            const repliesContainer = document.createElement('div');
+            repliesContainer.className = 'relative pl-4 space-y-3 mt-2';
+            replies.forEach(r => repliesContainer.appendChild(createCommentElement(r, true)));
+            line.appendChild(repliesContainer);
+            list.appendChild(line);
+        }
+        lucide.createIcons();
+      });
+      showModal('threadModal', 'threadModalContainer');
+    };
+
+    window.replyTo = (id, username, rootId = null) => {
+      if ($('threadModal').classList.contains('hidden') === false) {
+        threadReplyToId = id;
+        $('threadCommentInput').value = `${username}, `;
+        $('threadCommentInput').focus();
+        $('threadReplyingTo').classList.remove('hidden');
+        $('threadReplyingToName').innerText = username;
+      } else {
+        activeParentId = id; 
+        $('commentInput').value = `${username}, `;
+        $('commentInput').focus();
+        $('replyingToIndicator').classList.remove('hidden');
+        $('replyingToName').innerText = username;
+      }
+    };
+
+    window.cancelThreadReply = () => {
+        threadReplyToId = null;
+        $('threadReplyingTo').classList.add('hidden');
+        $('threadCommentInput').value = '';
+    };
+
+    window.delComment = async id => { if (activeVideoId) await deleteDoc(doc(db, 'comments_' + activeVideoId, id)); };
+
+    async function submitComment(e) {
+      e.preventDefault();
+      if (!currentUser) { showModal('authModal','authModalContainer'); return; }
+      const text = $('commentInput').value.trim(); if (!text || !activeVideoId) return;
+      const now = new Date();
+      await addDoc(collection(db, 'comments_' + activeVideoId), { uid: currentUser.uid, username: currentUser.username, avatar: currentUser.avatar, text, parentId: activeParentId || null, createdAt: serverTimestamp(), dateStr: `${now.toLocaleDateString('ru-RU')} ${now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}` });
+      $('commentInput').value = ''; $('replyingToIndicator').classList.add('hidden');
+      activeParentId = null;
+    }
+
+    async function submitThreadComment(e) {
+        e.preventDefault();
+        if (!currentUser) return;
+        const text = $('threadCommentInput').value.trim(); if (!text || !activeVideoId) return;
+        const now = new Date();
+        await addDoc(collection(db, 'comments_' + activeVideoId), { uid: currentUser.uid, username: currentUser.username, avatar: currentUser.avatar, text, parentId: threadReplyToId || activeThreadRootId, createdAt: serverTimestamp(), dateStr: `${now.toLocaleDateString('ru-RU')} ${now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}` });
+        $('threadCommentInput').value = ''; $('threadReplyingTo').classList.add('hidden');
+        threadReplyToId = null;
+    }
+
+    // --- Admin ---
+    function populateAdmin() {
+      $('adminGameSelector').innerHTML = games.map(g => `<label class="flex items-center gap-1.5 text-xs text-gray-300 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5 cursor-pointer hover:bg-white/10"><input type="checkbox" value="${g}" class="rounded text-indigo-600 focus:ring-0"> ${g}</label>`).join('');
+      $('videoAuthor').innerHTML = [...new Set(Object.values(authorsByGame).flat())].map(a => `<option value="${a}">${a}</option>`).join('');
+      $('authorGame').innerHTML = games.map(g => `<option value="${g}">${g}</option>`).join('');
+    }
+
+    async function addVideo(e) {
+      e.preventDefault();
+      const url = $('videoUrl').value.trim(), title = $('videoTitle').value.trim(), author = $('videoAuthor').value;
+      const sel = Array.from(document.querySelectorAll('#adminGameSelector input:checked')).map(c => c.value);
+      if (!sel.length) { alert('Выберите хотя бы одну игру'); return; }
+      await addDoc(collection(db, 'videos'), { url, title, author, games: sel, createdAt: serverTimestamp() });
+      hideModal('adminModal','adminModalContainer'); e.target.reset();
+      if (currentView === 'videos') renderVideosView();
+    }
+
+    async function addAuthor(e) {
+      e.preventDefault();
+      const game = $('authorGame').value, name = $('authorName').value.trim();
+      if (!name) return;
+      await addDoc(collection(db, 'authors'), { game, name });
+      alert(`Автор ${name} добавлен к игре ${game}`);
+      hideModal('adminModal','adminModalContainer'); e.target.reset();
+    }
+
+    async function addGame(e) {
+      e.preventDefault();
+      const gameName = $('newGameName').value.trim();
+      if (!gameName) return;
+      await addDoc(collection(db, 'games'), { name: gameName });
+      alert(`Игра "${gameName}" добавлена!`);
+      hideModal('adminModal','adminModalContainer'); e.target.reset();
+    }
+
+    // --- UI utils ---
+    function showModal(m, c) { const mm = $(m), cc = $(c); mm.classList.remove('hidden'); setTimeout(() => { mm.classList.remove('opacity-0'); cc.classList.remove('scale-95'); }, 10); }
+    function hideModal(m, c) { const mm = $(m), cc = $(c); mm.classList.add('opacity-0'); cc.classList.add('scale-95'); setTimeout(() => mm.classList.add('hidden'), 300); }
+
+    window.openProfile = openProfile;
+
+    // --- Init ---
+    document.addEventListener('DOMContentLoaded', () => {
+      calculateDays(); renderCurrentView(); loadData();
+      initParticles();
+      
+      $('authBtn').onclick = () => showModal('authModal','authModalContainer');
+      $('closeAuthModal').onclick = () => hideModal('authModal','authModalContainer');
+      $('googleLoginBtn').onclick = loginWithGoogle;
+      
+      $('profileBtn').onclick = () => openProfile();
+      $('closeProfileModal').onclick = () => hideModal('profileModal','profileModalContainer');
+      $('editProfileForm').onsubmit = handleEditProfile;
+      
+      $('setupForm').onsubmit = handleSetupProfile;
+      
+      $('logoutBtn').onclick = () => { 
+        signOut(auth); 
+        hideModal('profileModal','profileModalContainer'); 
+        currentView = 'games'; 
+        renderCurrentView(); 
+      };
+
+      $('adminPanelBtn').onclick = () => { populateAdmin(); showModal('adminModal','adminModalContainer'); };
+      $('closeAdminModal').onclick = () => hideModal('adminModal','adminModalContainer');
+      $('closeVideoModal').onclick = closeVideoModal;
+      
+      $('closeThreadModal').onclick = () => { hideModal('threadModal', 'threadModalContainer'); if(threadCommentsUnsubscribe) threadCommentsUnsubscribe(); };
+      $('threadCommentForm').onsubmit = submitThreadComment;
+
+      // Переключение вкладок в админке
+      $('tabVideo').onclick = () => { $('addVideoForm').classList.remove('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('tabVideo').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabAuthor').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.remove('hidden'); $('addGameForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('tabAuthor').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabGame').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.remove('hidden'); $('settingsForm').classList.add('hidden'); $('tabGame').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabSettings').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('settingsForm').classList.remove('hidden'); $('tabSettings').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; };
+
+      $('addVideoForm').onsubmit = addVideo;
+      $('addAuthorForm').onsubmit = addAuthor;
+      $('addGameForm').onsubmit = addGame;
+      
+      $('commentForm').onsubmit = submitComment;
+      $('cancelReply').onclick = () => { $('replyingToIndicator').classList.add('hidden'); activeParentId = null; };
+      
+      $('homeBtn').onclick = () => { currentView = 'games'; renderCurrentView(); };
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

@@ -95,13 +95,39 @@
 
   <canvas id="particleCanvas"></canvas>
 
-  <div id="topGamesContainer" class="fixed left-6 top-32 z-40 liquid-glass p-4 rounded-2xl w-64 hidden lg:block transform transition-all duration-300">
-    <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
-      <i data-lucide="trophy" class="w-4 h-4 text-yellow-500"></i> Топ-5 игр
-    </h3>
-    <div id="topGamesList" class="flex flex-col gap-2"></div>
+  <!-- Левая колонка -->
+  <div class="fixed left-6 top-32 z-40 flex flex-col gap-4 w-64 hidden lg:flex">
+    
+    <!-- Общее количество откатов -->
+    <div class="liquid-glass p-4 rounded-2xl flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-500/20 p-2 rounded-lg">
+          <i data-lucide="video" class="w-5 h-5 text-indigo-400"></i>
+        </div>
+        <span class="text-sm font-medium text-gray-300">Всего откатов</span>
+      </div>
+      <span id="totalVideosCount" class="text-xl font-bold text-white">0</span>
+    </div>
+
+    <!-- Топ-5 игр -->
+    <div id="topGamesContainer" class="liquid-glass p-4 rounded-2xl transform transition-all duration-300">
+      <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+        <i data-lucide="trophy" class="w-4 h-4 text-yellow-500"></i> Топ-5 игр по кол-ву откатов
+      </h3>
+      <div id="topGamesList" class="flex flex-col gap-2"></div>
+    </div>
+
+    <!-- Последние 3 отката -->
+    <div id="recentVideosContainer" class="liquid-glass p-4 rounded-2xl mt-auto mb-6">
+      <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+        <i data-lucide="clock" class="w-4 h-4 text-emerald-400"></i> Последние откаты
+      </h3>
+      <div id="recentVideosList" class="flex flex-col gap-3"></div>
+    </div>
+
   </div>
 
+  <!-- Правая колонка (Участники) -->
   <div id="membersContainer" class="fixed right-6 top-32 z-40 liquid-glass p-4 rounded-2xl w-64 hidden lg:block transform transition-all duration-300">
     <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
       <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i> Участники
@@ -306,6 +332,7 @@
             <div class="flex items-center justify-between text-xs text-gray-400 mt-2">
               <span id="modalVideoAuthor"></span>
               <div class="flex items-center gap-2">
+                <span id="modalVideoYear" class="bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full hidden"></span>
                 <span id="modalVideoGames" class="bg-white/10 px-2.5 py-1 rounded-full"></span>
               </div>
             </div>
@@ -514,7 +541,6 @@
             currentUser = { uid: user.uid, username: data.username, avatar: data.avatar || `https://ui-avatars.com/api/?name=${data.username}&background=random`, banner: data.banner || '', bio: data.bio || '', isAdmin: user.email.split('@')[0] === ADMIN_EMAIL_PREFIX };
             hideModal('setupModal', 'setupModalContainer');
             updateAuthUI(); 
-            // Обновляем список участников, если админ зашел
             updateMembersList();
           } else {
             currentUser = { uid: user.uid, isNew: true };
@@ -679,11 +705,12 @@
       lucide.createIcons();
     }
 
-    // --- Топ 5 игр и Участники ---
-    function updateTopGames() {
-      const container = $('topGamesList');
-      if (!container) return;
-      
+    // --- Дашборд (Слева) ---
+    function updateDashboard() {
+      // 1. Общее количество откатов
+      $('totalVideosCount').innerText = videos.length;
+
+      // 2. Топ-5 игр
       const gameStats = {};
       games.forEach(g => gameStats[g] = 0);
       
@@ -701,31 +728,65 @@
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
 
+      const topContainer = $('topGamesList');
       if (sortedGames.length === 0) {
-        container.innerHTML = '<p class="text-xs text-gray-500">Пока нет видео</p>';
-        return;
+        topContainer.innerHTML = '<p class="text-xs text-gray-500">Пока нет видео</p>';
+      } else {
+        topContainer.innerHTML = '';
+        sortedGames.forEach(([name, count], index) => {
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0';
+          
+          let medal = '';
+          if (index === 0) medal = '🥇';
+          else if (index === 1) medal = '🥈';
+          else if (index === 2) medal = '🥉';
+          else medal = `<span class="text-gray-500 w-4 inline-block text-center">${index + 1}</span>`;
+
+          row.innerHTML = `
+            <div class="flex items-center gap-2 text-gray-300">
+              <span class="text-sm">${medal}</span>
+              <span class="truncate max-w-[120px]">${name}</span>
+            </div>
+            <span class="text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded-md">${count}</span>
+          `;
+          topContainer.appendChild(row);
+        });
       }
 
-      container.innerHTML = '';
-      sortedGames.forEach(([name, count], index) => {
-        const row = document.createElement('div');
-        row.className = 'flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0';
-        
-        let medal = '';
-        if (index === 0) medal = '🥇';
-        else if (index === 1) medal = '🥈';
-        else if (index === 2) medal = '🥉';
-        else medal = `<span class="text-gray-500 w-4 inline-block text-center">${index + 1}</span>`;
+      // 3. Последние откаты
+      const recentContainer = $('recentVideosList');
+      const sortedByDate = [...videos].sort((a, b) => {
+        const dateA = a.createdAt?.toMillis() || 0;
+        const dateB = b.createdAt?.toMillis() || 0;
+        return dateB - dateA;
+      }).slice(0, 3);
 
-        row.innerHTML = `
-          <div class="flex items-center gap-2 text-gray-300">
-            <span class="text-sm">${medal}</span>
-            <span class="truncate max-w-[120px]">${name}</span>
-          </div>
-          <span class="text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded-md">${count}</span>
-        `;
-        container.appendChild(row);
-      });
+      if (sortedByDate.length === 0) {
+        recentContainer.innerHTML = '<p class="text-xs text-gray-500">Пока нет видео</p>';
+      } else {
+        recentContainer.innerHTML = '';
+        sortedByDate.forEach(v => {
+          const yt = extractYouTubeId(v.url);
+          const card = document.createElement('div');
+          card.className = 'flex gap-2 cursor-pointer group hover:bg-white/5 p-1 rounded-lg transition-colors';
+          card.onclick = () => window.openVideoModal(v.id);
+          card.innerHTML = `
+            <div class="relative w-16 h-10 rounded-md overflow-hidden flex-shrink-0 bg-black">
+              <img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
+              <div class="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                <i data-lucide="play" class="w-3 h-3 text-white fill-white"></i>
+              </div>
+            </div>
+            <div class="flex flex-col justify-center overflow-hidden">
+              <h4 class="text-[10px] font-medium text-white truncate">${v.title}</h4>
+              <p class="text-[9px] text-gray-500 truncate">${v.author}</p>
+            </div>
+          `;
+          recentContainer.appendChild(card);
+        });
+        lucide.createIcons();
+      }
     }
 
     function updateMembersList() {
@@ -738,7 +799,6 @@
       }
 
       container.innerHTML = '';
-      // Сортируем участников так, чтобы новые (добавленные позже) были снизу
       members.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
 
       members.forEach(m => {
@@ -777,14 +837,14 @@
         games.forEach(g => { if (!authorsByGame[g]) authorsByGame[g] = ['narcoeyes']; });
         
         if (currentView === 'games') renderCurrentView();
-        updateTopGames();
+        updateDashboard();
         populateYearSelect();
       });
 
       onSnapshot(collection(db, 'videos'), snap => {
         videos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (currentView === 'videos') renderVideosView();
-        updateTopGames();
+        updateDashboard();
         populateYearSelect();
       });
 
@@ -1033,7 +1093,13 @@
       $('modalVideoAuthor').innerText = `Автор: ${v.author}`;
       $('modalVideoGames').innerText = (v.games||[]).join(', ');
 
-      // Блок для админа с выбором года
+      if (v.year) {
+        $('modalVideoYear').classList.remove('hidden');
+        $('modalVideoYear').innerText = `Год: ${v.year}`;
+      } else {
+        $('modalVideoYear').classList.add('hidden');
+      }
+
       if (currentUser && currentUser.isAdmin) {
         $('adminYearBlock').classList.remove('hidden');
         
@@ -1047,7 +1113,6 @@
           yearSelect.innerHTML += `<option value="${y}" ${v.year === y ? 'selected' : ''}>${y} год</option>`;
         });
 
-        // Сохранение года
         $('saveVideoYearBtn').onclick = async () => {
           const newYear = yearSelect.value;
           try {
@@ -1245,7 +1310,6 @@
       const user = allUsers.find(u => u.uid === uid);
       if (!user) return;
       
-      // Добавляем createdAt, чтобы сортировать по времени добавления
       await addDoc(collection(db, 'members'), { uid: user.uid, username: user.username, avatar: user.avatar, createdAt: serverTimestamp() });
       alert(`${user.username} добавлен в участники!`);
       $('selectUser').value = '';

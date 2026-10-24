@@ -1,3 +1,12 @@
+Понял все три проблемы! Сейчас всё исправим:
+
+1. **Вернем старый шрифт**: подключим `helvetiker` (это дефолтный шрифт Three.js, он похож на старый Arial/Inter). 
+2. **Сделаем эффект Liquid Glass**: настроим материал так, чтобы он был полупрозрачным, с сильным блеском (clearcoat) и цветом индиго, как остальной интерфейс.
+3. **Уберем дубликат текста**: проблема была в том, что при рендере цветка создавался новый контейнер, а старый 3D-рендерер не удалялся. Я добавлю очистку сцены перед каждым рендером.
+
+Вот полный исправленный код. Замените свой `index.html`:
+
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -8,7 +17,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- Three.js для 3D -->
+  <!-- Three.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <style>
@@ -94,7 +103,6 @@
       transition: opacity 0.5s ease;
     }
 
-    /* Стили для 3D контейнера */
     #three-container {
       position: absolute;
       top: 50%;
@@ -104,7 +112,7 @@
       height: 150px;
       z-index: 15;
       cursor: grab;
-      pointer-events: auto; /* Чтобы можно было крутить */
+      pointer-events: auto;
     }
     #three-container:active {
       cursor: grabbing;
@@ -929,25 +937,30 @@
     let previousMousePosition = { x: 0, y: 0 };
     let targetRotation = { x: 0, y: 0 };
     let currentRotation = { x: 0, y: 0 };
+    let animationFrame3D;
 
     function init3D() {
       const container = document.getElementById('three-container');
       if (!container) return;
 
-      // Сцена
+      // Очистка предыдущей сцены, если она была
+      if (renderer) {
+        container.removeChild(renderer.domElement);
+        cancelAnimationFrame(animationFrame3D);
+        textMesh.geometry.dispose();
+        textMesh.material.dispose();
+      }
+
       scene = new THREE.Scene();
       
-      // Камера
       camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
       camera.position.z = 5;
 
-      // Рендерер
       renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
       renderer.setSize(container.clientWidth, container.clientHeight);
       renderer.setPixelRatio(window.devicePixelRatio);
       container.appendChild(renderer.domElement);
 
-      // Освещение
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
       scene.add(ambientLight);
       
@@ -955,18 +968,16 @@
       directionalLight.position.set(5, 5, 5);
       scene.add(directionalLight);
       
-      const pointLight = new THREE.PointLight(0x6366f1, 2, 10); // Индиго подсветка
+      const pointLight = new THREE.PointLight(0x6366f1, 2, 10); 
       pointLight.position.set(-2, 2, 2);
       scene.add(pointLight);
 
-      // Создаем 3D текст
       const loader = new THREE.FontLoader();
-      // Используем встроенный шрифт (загружаем с CDN)
       loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
         const geometry = new THREE.TextGeometry('rekai', {
           font: font,
           size: 1.5,
-          height: 0.3, // Толщина
+          height: 0.4,
           curveSegments: 12,
           bevelEnabled: true,
           bevelThickness: 0.05,
@@ -975,21 +986,21 @@
           bevelSegments: 5
         });
 
-        // Центрируем текст
         geometry.computeBoundingBox();
         const centerOffset = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
         geometry.translate(centerOffset, 0, 0);
 
-        // Материал (стеклянный, с бликами)
+        // Настройка под Liquid Glass (полупрозрачный, блестящий)
         const material = new THREE.MeshPhysicalMaterial({
-          color: 0xffffff,
-          metalness: 0.5,
+          color: 0x818cf8, // Индиго
+          metalness: 0.1,
           roughness: 0.1,
           clearcoat: 1,
           clearcoatRoughness: 0.1,
           reflectivity: 1,
           transparent: true,
-          opacity: 0.9
+          opacity: 0.85,
+          transmission: 0.5 // Эффект стекла
         });
 
         textMesh = new THREE.Mesh(geometry, material);
@@ -1000,17 +1011,15 @@
     }
 
     function animate3D() {
-      requestAnimationFrame(animate3D);
+      animationFrame3D = requestAnimationFrame(animate3D);
 
       if (!textMesh) return;
 
-      // Плавное возвращение к изначальному положению (если не крутят)
       if (!isDragging) {
         targetRotation.x += (0 - targetRotation.x) * 0.05;
         targetRotation.y += (0 - targetRotation.y) * 0.05;
       }
 
-      // Плавная интерполяция текущего вращения к целевому
       currentRotation.x += (targetRotation.x - currentRotation.x) * 0.1;
       currentRotation.y += (targetRotation.y - currentRotation.y) * 0.1;
 
@@ -1020,7 +1029,6 @@
       renderer.render(scene, camera);
     }
 
-    // Обработчики для 3D
     function setup3DControls() {
       const container = document.getElementById('three-container');
       if (!container) return;
@@ -1049,7 +1057,6 @@
         container.style.cursor = 'grab';
       });
 
-      // Тач-события для мобилок
       container.addEventListener('touchstart', (e) => {
         isDragging = true;
         previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -1080,14 +1087,12 @@
       container.className = 'relative w-[650px] h-[650px] max-w-full flex items-center justify-center fade-enter';
       container.id = 'flowerContainer';
       
-      // Центральный контент (3D текст)
       const center = document.createElement('div');
       center.className = 'absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none z-10';
       
-      // Если мы на главной (игры), показываем 3D, иначе обычный текст
       if (currentView === 'games') {
         center.innerHTML = `
-          <div id="three-container"></div>
+          <div id="three-container" class="pointer-events-auto"></div>
           ${centerSubtitle ? `<p class="text-sm font-light text-gray-400 mt-2 relative z-20 pointer-events-none">${centerSubtitle}</p>` : ''}
           ${currentView !== 'games' ? '<button id="backToGamesBtn" class="pointer-events-auto mt-4 text-xs text-indigo-400 hover:text-indigo-300 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-1"><i data-lucide="arrow-left" class="w-3 h-3"></i> Назад</button>' : ''}
         `;
@@ -1148,7 +1153,6 @@
 
       app.appendChild(container);
 
-      // Инициализация 3D и кнопки "Назад"
       if (currentView === 'games') {
         setTimeout(() => { init3D(); setup3DControls(); }, 10);
       }
@@ -1560,3 +1564,4 @@
   </script>
 </body>
 </html>
+```

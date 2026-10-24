@@ -738,6 +738,9 @@
       }
 
       container.innerHTML = '';
+      // Сортируем участников так, чтобы новые (добавленные позже) были снизу
+      members.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+
       members.forEach(m => {
         const row = document.createElement('div');
         row.className = 'flex items-center justify-between text-xs py-2 border-b border-white/5 last:border-0 hover:bg-white/5 rounded-lg px-2 transition-colors cursor-pointer group';
@@ -953,6 +956,7 @@
 
     function renderVideosView() {
       const app = $('app');
+      app.innerHTML = ''; // ОЧИЩАЕМ КОНТЕЙНЕР ПЕРЕД РЕНДЕРОМ
       
       let availableYears = new Set();
       videos.filter(v => v.games?.includes(selectedGame) && (selectedAuthor === 'Общие' || v.author === selectedAuthor)).forEach(v => {
@@ -1049,7 +1053,6 @@
           try {
             await updateDoc(doc(db, 'videos', id), { year: newYear || null });
             alert('Год обновлен!');
-            // Если мы на странице видео, перерисуем её
             if (currentView === 'videos') renderVideosView();
           } catch (err) {
             alert('Ошибка: ' + err.message);
@@ -1242,7 +1245,8 @@
       const user = allUsers.find(u => u.uid === uid);
       if (!user) return;
       
-      await addDoc(collection(db, 'members'), { uid: user.uid, username: user.username, avatar: user.avatar });
+      // Добавляем createdAt, чтобы сортировать по времени добавления
+      await addDoc(collection(db, 'members'), { uid: user.uid, username: user.username, avatar: user.avatar, createdAt: serverTimestamp() });
       alert(`${user.username} добавлен в участники!`);
       $('selectUser').value = '';
     }

@@ -17,7 +17,6 @@
       min-height: 100vh; 
     }
 
-    /* Настоящий Apple Liquid Glass */
     .liquid-glass {
       background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
       backdrop-filter: blur(24px) saturate(200%);
@@ -96,14 +95,20 @@
 
   <canvas id="particleCanvas"></canvas>
 
-  <!-- Топ-5 игр (слева внизу) -->
+  <!-- Топ-5 игр (слева) -->
   <div id="topGamesContainer" class="fixed left-6 top-32 z-40 liquid-glass p-4 rounded-2xl w-64 hidden lg:block transform transition-all duration-300">
     <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
       <i data-lucide="trophy" class="w-4 h-4 text-yellow-500"></i> Топ-5 игр
     </h3>
-    <div id="topGamesList" class="flex flex-col gap-2">
-      <!-- Сюда рендерится список -->
-    </div>
+    <div id="topGamesList" class="flex flex-col gap-2"></div>
+  </div>
+
+  <!-- Участники (справа) -->
+  <div id="membersContainer" class="fixed right-6 top-32 z-40 liquid-glass p-4 rounded-2xl w-64 hidden lg:block transform transition-all duration-300">
+    <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+      <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i> Участники
+    </h3>
+    <div id="membersList" class="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1"></div>
   </div>
 
   <button id="randomBtn" class="fixed bottom-6 right-6 z-40 liquid-glass-interactive p-4 rounded-full text-indigo-300 hover:text-white flex items-center justify-center group" title="Случайный откат">
@@ -239,6 +244,7 @@
         <button id="tabVideo" class="text-white border-b-2 border-indigo-500 pb-2">Видео</button>
         <button id="tabAuthor" class="text-gray-400 hover:text-white pb-2">Авторы</button>
         <button id="tabGame" class="text-gray-400 hover:text-white pb-2">Игры</button>
+        <button id="tabUsers" class="text-gray-400 hover:text-white pb-2">Участники</button>
         <button id="tabSettings" class="text-gray-400 hover:text-white pb-2">Эффекты</button>
       </div>
 
@@ -247,6 +253,9 @@
         <div><label class="block text-xs text-gray-400 mb-1">Название видео</label><input type="text" id="videoTitle" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"></div>
         <div><label class="block text-xs text-gray-400 mb-1">Относится к играм</label><div id="adminGameSelector" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-white/5 rounded-xl border border-white/10"></div></div>
         <div><label class="block text-xs text-gray-400 mb-1">Автор отката</label><select id="videoAuthor" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900"></select></div>
+        <div><label class="block text-xs text-gray-400 mb-1">Год создания</label><select id="videoYear" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900">
+          <option value="">Не указан</option>
+        </select></div>
         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Опубликовать видео</button>
       </form>
       
@@ -259,6 +268,16 @@
       <form id="addGameForm" class="flex flex-col gap-4 hidden">
         <div><label class="block text-xs text-gray-400 mb-1">Название новой игры</label><input type="text" id="newGameName" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="Например: Lethal Company"></div>
         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Добавить игру</button>
+      </form>
+
+      <form id="addUserForm" class="flex flex-col gap-4 hidden">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Добавить участника на главную</label>
+          <select id="selectUser" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900">
+            <option value="">Загрузка...</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Добавить</button>
       </form>
 
       <form id="settingsForm" class="flex flex-col gap-4 hidden">
@@ -286,7 +305,13 @@
           <div>
             <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl bg-black aspect-video"><iframe id="modalIframe" class="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
             <h2 id="modalVideoTitle" class="text-xl font-semibold mt-4 text-white"></h2>
-            <div class="flex items-center justify-between text-xs text-gray-400 mt-2"><span id="modalVideoAuthor"></span><span id="modalVideoGames" class="bg-white/10 px-2.5 py-1 rounded-full"></span></div>
+            <div class="flex items-center justify-between text-xs text-gray-400 mt-2">
+              <span id="modalVideoAuthor"></span>
+              <div class="flex items-center gap-2">
+                <span id="modalVideoYear" class="bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full hidden"></span>
+                <span id="modalVideoGames" class="bg-white/10 px-2.5 py-1 rounded-full"></span>
+              </div>
+            </div>
           </div>
         </div>
         <div class="p-6 flex flex-col h-[500px] lg:h-full bg-white/5">
@@ -329,10 +354,13 @@
     let authorsByGame = {};
     DEFAULT_GAMES.forEach(g => authorsByGame[g] = ['narcoeyes']);
     let videos = [];
+    let allUsers = [];
+    let members = [];
     let currentUser = null; 
     let currentView = 'games';
     let selectedGame = null;
     let selectedAuthor = null;
+    let selectedYear = null;
     let activeVideoId = null;
     let commentsUnsubscribe = null;
     let userUnsubscribe = null;
@@ -639,7 +667,7 @@
       lucide.createIcons();
     }
 
-    // --- Топ 5 игр ---
+    // --- Топ 5 игр и Участники ---
     function updateTopGames() {
       const container = $('topGamesList');
       if (!container) return;
@@ -688,33 +716,51 @@
       });
     }
 
+    function updateMembersList() {
+      const container = $('membersList');
+      if (!container) return;
+      
+      if (members.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-500">Пока нет участников</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      members.forEach(m => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between text-xs py-2 border-b border-white/5 last:border-0 cursor-pointer hover:bg-white/5 rounded-lg px-2 transition-colors';
+        row.onclick = () => window.openProfile(m.username);
+        row.innerHTML = `
+          <div class="flex items-center gap-2 text-gray-300">
+            <img src="${m.avatar || 'https://via.placeholder.com/20'}" class="w-5 h-5 rounded-full object-cover bg-gray-700">
+            <span class="truncate max-w-[120px]">${m.username}</span>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
     // --- Data loading ---
     function loadData() {
-      // Загрузка игр (разделов)
       onSnapshot(collection(db, 'games'), snap => {
         if (!snap.empty) {
           games = [];
-          snap.forEach(d => {
-            const g = d.data().name;
-            if (!games.includes(g)) games.push(g);
-          });
-          // Добавляем дефолтные игры, если их нет в базе
+          snap.forEach(d => { const g = d.data().name; if (!games.includes(g)) games.push(g); });
           DEFAULT_GAMES.forEach(g => { if (!games.includes(g)) games.push(g); });
-        } else {
-          games = [...DEFAULT_GAMES];
-        }
+        } else { games = [...DEFAULT_GAMES]; }
         
-        // Убеждаемся, что для каждой игры есть массив авторов
         games.forEach(g => { if (!authorsByGame[g]) authorsByGame[g] = ['narcoeyes']; });
         
         if (currentView === 'games') renderCurrentView();
-        updateTopGames(); // Обновляем топ при загрузке игр
+        updateTopGames();
+        populateYearSelect();
       });
 
       onSnapshot(collection(db, 'videos'), snap => {
         videos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (currentView === 'videos') renderVideosView();
-        updateTopGames(); // Обновляем топ при добавлении видео
+        updateTopGames();
+        populateYearSelect();
       });
 
       onSnapshot(collection(db, 'authors'), snap => {
@@ -723,21 +769,69 @@
         snap.forEach(d => { const { game, name } = d.data(); if (!authorsByGame[game]) authorsByGame[game] = ['narcoeyes']; if (!authorsByGame[game].includes(name)) authorsByGame[game].push(name); });
         if (currentView === 'authors' || currentView === 'videos') renderCurrentView();
       });
+
+      // Слушатель всех пользователей для админки
+      onSnapshot(collection(db, 'users'), snap => {
+        allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        populateUsersSelect();
+      });
+
+      // Слушатель участников (кого админ добавил)
+      onSnapshot(collection(db, 'members'), snap => {
+        members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        updateMembersList();
+      });
+    }
+
+    function populateYearSelect() {
+      const select = $('videoYear');
+      if (!select) return;
+      
+      const currentYear = new Date().getFullYear();
+      const years = new Set();
+      
+      // Добавляем от 2023 до текущего года
+      for (let y = 2023; y <= currentYear; y++) {
+        years.add(y.toString());
+      }
+      
+      // Добавляем года, которые уже есть в видео
+      videos.forEach(v => { if (v.year) years.add(v.year); });
+
+      const sortedYears = Array.from(years).sort();
+      
+      select.innerHTML = '<option value="">Не указан</option>';
+      sortedYears.forEach(y => {
+        select.innerHTML += `<option value="${y}">${y}</option>`;
+      });
+    }
+
+    function populateUsersSelect() {
+      const select = $('selectUser');
+      if (!select) return;
+      select.innerHTML = '<option value="">Выберите пользователя...</option>';
+      allUsers.forEach(u => {
+        // Не добавляем тех, кто уже в списке участников
+        if (!members.find(m => m.uid === u.uid)) {
+          select.innerHTML += `<option value="${u.uid}">${u.username}</option>`;
+        }
+      });
     }
 
     // --- Views ---
     function renderCurrentView() {
       const app = $('app'); app.innerHTML = '';
       if (currentView === 'games') {
+        selectedYear = null; // Сброс фильтра при возврате
         renderFlower(games, g => { selectedGame = g; currentView = 'authors'; renderCurrentView(); }, 'rekai', '');
       } else if (currentView === 'authors') {
+        selectedYear = null;
         const authors = ['Общие', ...(authorsByGame[selectedGame] || ['narcoeyes'])];
         renderFlower(authors, a => { selectedAuthor = a; currentView = 'videos'; renderCurrentView(); }, selectedGame, 'Выберите автора отката');
       } else renderVideosView();
       lucide.createIcons();
     }
 
-    // --- Улучшенная физика (расталкивание и расширение) ---
     function renderFlower(items, onSelect, centerTitle, centerSubtitle) {
       const app = $('app');
       const container = document.createElement('div');
@@ -750,18 +844,15 @@
       container.appendChild(center);
 
       const nodeRadius = 52; 
-      // Радиус орбиты зависит от количества элементов
       const radius = Math.max(180, items.length * 18); 
       const count = items.length;
-      const centerX = 325; // Центр контейнера 650/2
+      const centerX = 325; 
       const centerY = 325;
 
       const nodesData = items.map((item, index) => {
         const angle = (index / count) * 2 * Math.PI - Math.PI / 2;
-        // Случайное отклонение от идеального круга для "живого" эффекта
         const randomOffset = Math.random() * 20 - 10; 
         const currentRadius = radius + randomOffset;
-        
         const x = centerX + currentRadius * Math.cos(angle) - nodeRadius;
         const y = centerY + currentRadius * Math.sin(angle) - nodeRadius;
         return { id: item, baseX: x, baseY: y, x, y, vx: 0, vy: 0, element: null };
@@ -800,14 +891,12 @@
       app.appendChild(container);
       if ($('backToGamesBtn')) $('backToGamesBtn').onclick = () => { currentView = 'games'; renderCurrentView(); };
 
-      // Физика (Притяжение к орбите + Расталкивание)
       (function physics() {
-        const k = 0.02; // Жесткость орбиты (меньше = более хаотично)
-        const damping = 0.85; // Затухание
-        const repulsionForce = 1.2; // Сила расталкивания (больше = сильнее отталкиваются)
+        const k = 0.02;
+        const damping = 0.85;
+        const repulsionForce = 1.2;
 
         nodesData.forEach(n => {
-          // 1. Притяжение к базовой позиции на орбите
           const fx = (n.baseX - n.x) * k;
           const fy = (n.baseY - n.y) * k;
           n.vx = (n.vx + fx) * damping;
@@ -816,7 +905,6 @@
           n.y += n.vy;
         });
 
-        // 2. Расталкивание (чтобы не наезжали друг на друга)
         for (let i = 0; i < nodesData.length; i++) {
           for (let j = i + 1; j < nodesData.length; j++) {
             const n1 = nodesData[i];
@@ -824,49 +912,91 @@
             const dx = n1.x - n2.x;
             const dy = n1.y - n2.y;
             const dist = Math.hypot(dx, dy);
-            const minDist = nodeRadius * 2 + 10; // Минимальная дистанция
+            const minDist = nodeRadius * 2 + 10;
 
             if (dist < minDist && dist > 0) {
-              const force = (minDist - dist) / minDist; // Сила отталкивания
+              const force = (minDist - dist) / minDist;
               const pushX = (dx / dist) * force * repulsionForce;
               const pushY = (dy / dist) * force * repulsionForce;
-              
               n1.x += pushX; n1.y += pushY;
               n2.x -= pushX; n2.y -= pushY;
             }
           }
         }
 
-        // 3. Применяем координаты к элементам
         nodesData.forEach(n => {
           if (n.element) {
             n.element.style.left = `${n.x}px`;
             n.element.style.top = `${n.y}px`;
           }
         });
-
         requestAnimationFrame(physics);
       })();
     }
 
     function renderVideosView() {
       const app = $('app');
-      const filtered = videos.filter(v => v.games?.includes(selectedGame) && (selectedAuthor === 'Общие' || v.author === selectedAuthor));
+      
+      // Получаем уникальные года для этого автора/игры
+      let availableYears = new Set();
+      videos.filter(v => v.games?.includes(selectedGame) && (selectedAuthor === 'Общие' || v.author === selectedAuthor)).forEach(v => {
+        if (v.year) availableYears.add(v.year);
+      });
+      const sortedYears = Array.from(availableYears).sort();
+
+      const filtered = videos.filter(v => {
+        const matchGame = v.games?.includes(selectedGame);
+        const matchAuthor = (selectedAuthor === 'Общие' || v.author === selectedAuthor);
+        const matchYear = selectedYear ? (v.year === selectedYear) : true;
+        return matchGame && matchAuthor && matchYear;
+      });
+
       const c = document.createElement('div'); c.className = 'w-full max-w-6xl mx-auto fade-enter';
-      let html = `<div class="flex items-center justify-between mb-8"><div class="flex items-center gap-3"><button id="backBtn" class="liquid-glass-interactive px-4 py-2 rounded-full text-xs flex items-center gap-2 hover:text-white"><i data-lucide="arrow-left" class="w-4 h-4"></i> Назад</button><div><h2 class="text-2xl font-bold text-white">${selectedGame}</h2><p class="text-xs text-gray-400">Автор: ${selectedAuthor}</p></div></div></div>`;
+      
+      let html = `<div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+          <button id="backBtn" class="liquid-glass-interactive px-4 py-2 rounded-full text-xs flex items-center gap-2 hover:text-white"><i data-lucide="arrow-left" class="w-4 h-4"></i> Назад</button>
+          <div><h2 class="text-2xl font-bold text-white">${selectedGame}</h2><p class="text-xs text-gray-400">Автор: ${selectedAuthor}</p></div>
+        </div>`;
+        
+      // Фильтр по годам (только если есть года)
+      if (sortedYears.length > 0) {
+        html += `
+        <div class="relative">
+          <select id="yearFilter" class="liquid-glass-interactive appearance-none bg-white/5 border border-white/10 rounded-full px-4 py-2 pr-10 text-sm text-white focus:outline-none cursor-pointer">
+            <option value="">Все года</option>
+            ${sortedYears.map(y => `<option value="${y}" ${selectedYear === y ? 'selected' : ''}>${y} год</option>`).join('')}
+          </select>
+          <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+        </div>`;
+      }
+      html += `</div>`;
+
       if (!filtered.length) {
-        html += `<div class="liquid-glass p-12 rounded-3xl text-center flex flex-col items-center justify-center my-12"><i data-lucide="video-off" class="w-12 h-12 text-gray-500 mb-4"></i><h3 class="text-lg font-medium text-gray-300">В этом разделе пока нет видео</h3><p class="text-xs text-gray-500 mt-1">Добавьте первое видео через панель администратора</p></div>`;
+        html += `<div class="liquid-glass p-12 rounded-3xl text-center flex flex-col items-center justify-center my-12"><i data-lucide="video-off" class="w-12 h-12 text-gray-500 mb-4"></i><h3 class="text-lg font-medium text-gray-300">В этом разделе пока нет видео</h3><p class="text-xs text-gray-500 mt-1">Попробуйте изменить фильтр или добавьте видео через админку</p></div>`;
       } else {
         html += `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
         filtered.forEach(v => {
           const yt = extractYouTubeId(v.url);
           const deleteBtn = (currentUser && currentUser.isAdmin) ? `<button onclick="event.stopPropagation(); window.deleteVideo('${v.id}')" class="absolute top-3 left-3 z-10 bg-black/60 hover:bg-red-600 text-white p-2 rounded-full backdrop-blur-md transition-colors" title="Удалить видео"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : '';
-          html += `<div class="liquid-glass-interactive rounded-2xl overflow-hidden cursor-pointer group flex flex-col relative" onclick="window.openVideoModal('${v.id}')"><div class="relative aspect-video bg-black overflow-hidden"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="${v.title}">${deleteBtn}<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"><div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white"><i data-lucide="play" class="w-6 h-6 fill-white"></i></div></div></div><div class="p-4 flex flex-col flex-grow justify-between"><div><h3 class="font-medium text-sm text-white line-clamp-2">${v.title}</h3><p class="text-xs text-gray-400 mt-1">Автор: ${v.author}</p></div><div class="flex items-center justify-between text-[10px] text-gray-500 mt-4 pt-2 border-t border-white/5"><span>${(v.games||[]).join(', ')}</span></div></div></div>`;
+          const yearBadge = v.year ? `<span class="absolute top-3 right-3 z-10 bg-indigo-500/80 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur-md">${v.year}</span>` : '';
+          
+          html += `<div class="liquid-glass-interactive rounded-2xl overflow-hidden cursor-pointer group flex flex-col relative" onclick="window.openVideoModal('${v.id}')"><div class="relative aspect-video bg-black overflow-hidden"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="${v.title}">${deleteBtn}${yearBadge}<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"><div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white"><i data-lucide="play" class="w-6 h-6 fill-white"></i></div></div></div><div class="p-4 flex flex-col flex-grow justify-between"><div><h3 class="font-medium text-sm text-white line-clamp-2">${v.title}</h3><p class="text-xs text-gray-400 mt-1">Автор: ${v.author}</p></div><div class="flex items-center justify-between text-[10px] text-gray-500 mt-4 pt-2 border-t border-white/5"><span>${(v.games||[]).join(', ')}</span></div></div></div>`;
         });
         html += `</div>`;
       }
       c.innerHTML = html; app.appendChild(c);
-      $('backBtn').onclick = () => { currentView = 'authors'; renderCurrentView(); };
+
+      $('backBtn').onclick = () => { currentView = 'authors'; selectedYear = null; renderCurrentView(); };
+      
+      const yearFilter = $('yearFilter');
+      if (yearFilter) {
+        yearFilter.onchange = (e) => {
+          selectedYear = e.target.value || null;
+          renderVideosView();
+        };
+      }
+
       lucide.createIcons();
     }
 
@@ -883,6 +1013,14 @@
       $('modalVideoTitle').innerText = v.title;
       $('modalVideoAuthor').innerText = `Автор: ${v.author}`;
       $('modalVideoGames').innerText = (v.games||[]).join(', ');
+      
+      if (v.year) {
+        $('modalVideoYear').classList.remove('hidden');
+        $('modalVideoYear').innerText = `Год: ${v.year}`;
+      } else {
+        $('modalVideoYear').classList.add('hidden');
+      }
+
       loadComments(id);
       showModal('videoModal','videoModalContainer');
     };
@@ -1026,14 +1164,17 @@
       $('adminGameSelector').innerHTML = games.map(g => `<label class="flex items-center gap-1.5 text-xs text-gray-300 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5 cursor-pointer hover:bg-white/10"><input type="checkbox" value="${g}" class="rounded text-indigo-600 focus:ring-0"> ${g}</label>`).join('');
       $('videoAuthor').innerHTML = [...new Set(Object.values(authorsByGame).flat())].map(a => `<option value="${a}">${a}</option>`).join('');
       $('authorGame').innerHTML = games.map(g => `<option value="${g}">${g}</option>`).join('');
+      populateUsersSelect();
+      populateYearSelect();
     }
 
     async function addVideo(e) {
       e.preventDefault();
       const url = $('videoUrl').value.trim(), title = $('videoTitle').value.trim(), author = $('videoAuthor').value;
+      const year = $('videoYear').value;
       const sel = Array.from(document.querySelectorAll('#adminGameSelector input:checked')).map(c => c.value);
       if (!sel.length) { alert('Выберите хотя бы одну игру'); return; }
-      await addDoc(collection(db, 'videos'), { url, title, author, games: sel, createdAt: serverTimestamp() });
+      await addDoc(collection(db, 'videos'), { url, title, author, games: sel, year: year || null, createdAt: serverTimestamp() });
       hideModal('adminModal','adminModalContainer'); e.target.reset();
       if (currentView === 'videos') renderVideosView();
     }
@@ -1055,6 +1196,23 @@
       alert(`Игра "${gameName}" добавлена!`);
       hideModal('adminModal','adminModalContainer'); e.target.reset();
     }
+
+    async function addMember(e) {
+      e.preventDefault();
+      const uid = $('selectUser').value;
+      if (!uid) return;
+      const user = allUsers.find(u => u.uid === uid);
+      if (!user) return;
+      
+      await addDoc(collection(db, 'members'), { uid: user.uid, username: user.username, avatar: user.avatar });
+      alert(`${user.username} добавлен в участники!`);
+      $('selectUser').value = '';
+    }
+
+    window.removeMember = async (docId) => {
+      if (!confirm('Убрать этого участника с главной?')) return;
+      await deleteDoc(doc(db, 'members', docId));
+    };
 
     // --- UI utils ---
     function showModal(m, c) { const mm = $(m), cc = $(c); mm.classList.remove('hidden'); setTimeout(() => { mm.classList.remove('opacity-0'); cc.classList.remove('scale-95'); }, 10); }
@@ -1092,14 +1250,16 @@
       $('threadCommentForm').onsubmit = submitThreadComment;
 
       // Переключение вкладок в админке
-      $('tabVideo').onclick = () => { $('addVideoForm').classList.remove('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('tabVideo').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabAuthor').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.remove('hidden'); $('addGameForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('tabAuthor').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabGame').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.remove('hidden'); $('settingsForm').classList.add('hidden'); $('tabGame').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabSettings').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('settingsForm').classList.remove('hidden'); $('tabSettings').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabVideo').onclick = () => { $('addVideoForm').classList.remove('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('tabVideo').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabAuthor').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.remove('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('tabAuthor').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabGame').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.remove('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('tabGame').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabUsers').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.remove('hidden'); $('settingsForm').classList.add('hidden'); $('tabUsers').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabSettings').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.remove('hidden'); $('tabSettings').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; };
 
       $('addVideoForm').onsubmit = addVideo;
       $('addAuthorForm').onsubmit = addAuthor;
       $('addGameForm').onsubmit = addGame;
+      $('addUserForm').onsubmit = addMember;
       
       $('commentForm').onsubmit = submitComment;
       $('cancelReply').onclick = () => { $('replyingToIndicator').classList.add('hidden'); activeParentId = null; };

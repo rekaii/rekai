@@ -96,6 +96,16 @@
 
   <canvas id="particleCanvas"></canvas>
 
+  <!-- Топ-5 игр (слева внизу) -->
+  <div id="topGamesContainer" class="fixed left-6 top-32 z-40 liquid-glass p-4 rounded-2xl w-64 hidden lg:block transform transition-all duration-300">
+    <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+      <i data-lucide="trophy" class="w-4 h-4 text-yellow-500"></i> Топ-5 игр
+    </h3>
+    <div id="topGamesList" class="flex flex-col gap-2">
+      <!-- Сюда рендерится список -->
+    </div>
+  </div>
+
   <button id="randomBtn" class="fixed bottom-6 right-6 z-40 liquid-glass-interactive p-4 rounded-full text-indigo-300 hover:text-white flex items-center justify-center group" title="Случайный откат">
     <i data-lucide="dices" class="w-7 h-7 group-hover:animate-bounce"></i>
   </button>
@@ -629,6 +639,55 @@
       lucide.createIcons();
     }
 
+    // --- Топ 5 игр ---
+    function updateTopGames() {
+      const container = $('topGamesList');
+      if (!container) return;
+      
+      const gameStats = {};
+      games.forEach(g => gameStats[g] = 0);
+      
+      videos.forEach(v => {
+        if (v.games && Array.isArray(v.games)) {
+          v.games.forEach(g => {
+            if (gameStats[g] !== undefined) gameStats[g]++;
+            else gameStats[g] = 1;
+          });
+        }
+      });
+
+      const sortedGames = Object.entries(gameStats)
+        .filter(([_, count]) => count > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      if (sortedGames.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-500">Пока нет видео</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      sortedGames.forEach(([name, count], index) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0';
+        
+        let medal = '';
+        if (index === 0) medal = '🥇';
+        else if (index === 1) medal = '🥈';
+        else if (index === 2) medal = '🥉';
+        else medal = `<span class="text-gray-500 w-4 inline-block text-center">${index + 1}</span>`;
+
+        row.innerHTML = `
+          <div class="flex items-center gap-2 text-gray-300">
+            <span class="text-sm">${medal}</span>
+            <span class="truncate max-w-[120px]">${name}</span>
+          </div>
+          <span class="text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded-md">${count}</span>
+        `;
+        container.appendChild(row);
+      });
+    }
+
     // --- Data loading ---
     function loadData() {
       // Загрузка игр (разделов)
@@ -649,11 +708,13 @@
         games.forEach(g => { if (!authorsByGame[g]) authorsByGame[g] = ['narcoeyes']; });
         
         if (currentView === 'games') renderCurrentView();
+        updateTopGames(); // Обновляем топ при загрузке игр
       });
 
       onSnapshot(collection(db, 'videos'), snap => {
         videos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (currentView === 'videos') renderVideosView();
+        updateTopGames(); // Обновляем топ при добавлении видео
       });
 
       onSnapshot(collection(db, 'authors'), snap => {

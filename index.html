@@ -77,10 +77,9 @@
     
     .flower-node:active { cursor: grabbing; }
 
-    /* Желейный эффект при наведении */
     .flower-node:hover {
       transform: scale(1.05) !important;
-      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); /* Эффект пружины */
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); 
     }
     
     ::-webkit-scrollbar { width: 6px; }
@@ -924,8 +923,12 @@
       container.appendChild(center);
 
       const nodeRadius = 55; 
-      // Базовый радиус зависит от количества элементов
-      const baseRadius = Math.max(180, items.length * 18); 
+      
+      // Если элементов мало, мы раздвигаем их по большему кругу, чтобы они не лезли на центр
+      let baseRadius = Math.max(220, items.length * 18); 
+      // Если элементов совсем мало (меньше 6), делаем круг еще больше
+      if (items.length < 6) baseRadius = 250;
+
       const count = items.length;
       const centerX = 325; 
       const centerY = 325;
@@ -933,8 +936,8 @@
       const nodesData = items.map((item, index) => {
         const angle = (index / count) * 2 * Math.PI - Math.PI / 2;
         
-        // Делаем случайный хаос сильнее (отклонение от 30 до -30 пикселей)
-        const randomOffset = (Math.random() * 60) - 30; 
+        // Меньше хаоса при малом количестве, чтобы они не залетали на центр
+        const randomOffset = items.length < 6 ? (Math.random() * 10) - 5 : (Math.random() * 60) - 30; 
         const currentRadius = baseRadius + randomOffset;
         
         const x = centerX + currentRadius * Math.cos(angle) - nodeRadius;
@@ -947,7 +950,6 @@
             x, y, 
             vx: 0, vy: 0, 
             element: null,
-            // Добавляем уникальные параметры для каждого кружка, чтобы физика была "живой"
             mass: 1 + Math.random() * 0.5,
             bounce: 0.5 + Math.random() * 0.5
         };
@@ -993,13 +995,13 @@
 
       // --- Улучшенная "Желейная" Физика ---
       (function physics() {
-        // Мягкая пружина (k), чтобы они плавно возвращались
         const k = 0.015; 
-        // Демпфирование (сопротивление), чтобы не летали вечно
         const damping = 0.92;
         
+        // Внутренний радиус, который нельзя пересекать (защита текста)
+        const safeZoneRadius = 160; 
+        
         nodesData.forEach(n => {
-          // Притяжение к базовой точке
           const fx = (n.baseX - n.x) * k;
           const fy = (n.baseY - n.y) * k;
           
@@ -1008,9 +1010,25 @@
           
           n.x += n.vx;
           n.y += n.vy;
+
+          // Жесткая защита центра (отталкивание от текста)
+          const distToCenter = Math.hypot(n.x + nodeRadius - centerX, n.y + nodeRadius - centerY);
+          if (distToCenter < safeZoneRadius) {
+            const angle = Math.atan2(n.y + nodeRadius - centerY, n.x + nodeRadius - centerX);
+            // Возвращаем на безопасное расстояние
+            const targetX = centerX + Math.cos(angle) * safeZoneRadius - nodeRadius;
+            const targetY = centerY + Math.sin(angle) * safeZoneRadius - nodeRadius;
+            
+            // Плавно выталкиваем
+            n.x += (targetX - n.x) * 0.2;
+            n.y += (targetY - n.y) * 0.2;
+            
+            // Гасим скорость, чтобы не было отскоков
+            n.vx *= 0.5;
+            n.vy *= 0.5;
+          }
         });
 
-        // Расталкивание (коллизии)
         for (let i = 0; i < nodesData.length; i++) {
           for (let j = i + 1; j < nodesData.length; j++) {
             const n1 = nodesData[i];
@@ -1019,19 +1037,16 @@
             const dy = n1.y - n2.y;
             const dist = Math.hypot(dx, dy);
             
-            // Минимальная дистанция между центрами (диаметр + зазор)
             const minDist = nodeRadius * 2 + 5;
 
             if (dist < minDist && dist > 0) {
-              // Выталкиваем их друг от друга
               const force = (minDist - dist) / minDist;
-              const pushX = (dx / dist) * force * 2; // Сила расталкивания
+              const pushX = (dx / dist) * force * 2;
               const pushY = (dy / dist) * force * 2;
               
               n1.x += pushX; n1.y += pushY;
               n2.x -= pushX; n2.y -= pushY;
               
-              // Добавляем импульс, чтобы создавалось ощущение "отскока"
               n1.vx += pushX * 0.5; n1.vy += pushY * 0.5;
               n2.vx -= pushX * 0.5; n2.vy -= pushY * 0.5;
             }

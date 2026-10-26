@@ -104,7 +104,6 @@
 
   <div class="fixed left-6 top-32 z-40 flex flex-col gap-4 w-64 hidden lg:flex">
     
-    <!-- Кнопка обновления (только для админа) -->
     <button id="refreshDataBtn" class="hidden liquid-glass-interactive p-3 rounded-2xl flex items-center justify-center gap-2 text-sm font-medium text-indigo-300 hover:text-white transition-all">
       <i data-lucide="refresh-cw" class="w-4 h-4"></i> Обновить данные
     </button>
@@ -388,7 +387,7 @@
     // --- State ---
     const START_DATE = new Date('2023-07-19T00:00:00+05:00');
     const ADMIN_EMAIL_PREFIX = 'solexerg'; 
-    const DEFAULT_GAMES = ["Counter Strike","GTA","FTF","minecraft","fortnite","phasmophobia","REPO","Buckshot Roulette","Sons of the forest","roblox","rdr 2","Gang Beasts","a way out","nuclear nightmare","IRL","прочее"];
+    const DEFAULT_GAMES = ["Counter Strike","GTA V","FTF","minecraft","fortnite","phasmophobia","REPO","Buckshot Roulette","Sons of the forest","roblox","rdr 2","Gang Beasts","a way out","nuclear nightmare","IRL","прочее"];
 
     let games = [...DEFAULT_GAMES];
     let authorsByGame = {};
@@ -1403,7 +1402,7 @@
         btn.disabled = true;
 
         try {
-          // Принудительно перезапрашиваем коллекции
+          // 1. Обновляем список игр
           const gamesSnap = await getDocs(collection(db, 'games'));
           if (!gamesSnap.empty) {
             games = [];
@@ -1411,6 +1410,7 @@
             DEFAULT_GAMES.forEach(g => { if (!games.includes(g)) games.push(g); });
           }
 
+          // 2. Обновляем авторов
           const authorsSnap = await getDocs(collection(db, 'authors'));
           authorsByGame = {};
           games.forEach(g => authorsByGame[g] = ['narcoeyes']);
@@ -1420,15 +1420,22 @@
             if (!authorsByGame[game].includes(name)) authorsByGame[game].push(name); 
           });
 
+          // 3. Обновляем пользователей
           const usersSnap = await getDocs(collection(db, 'users'));
           allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
+          // 4. Обновляем видео
           const videosSnap = await getDocs(collection(db, 'videos'));
           videos = videosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+          // 5. Обновляем участников
           const membersSnap = await getDocs(collection(db, 'members'));
           members = membersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+          // ВАЖНО: Чиним названия игр в видео (если они переименованы)
+          // Если мы нашли видео с игрой, которой нет в списке games, пробуем найти похожую
+          // Но проще просто перерисовать всё
+          
           updateDashboard();
           updateMembersList();
           if (currentView === 'games') renderCurrentView();

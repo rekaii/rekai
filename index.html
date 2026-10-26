@@ -103,11 +103,6 @@
   <canvas id="particleCanvas"></canvas>
 
   <div class="fixed left-6 top-32 z-40 flex flex-col gap-4 w-64 hidden lg:flex">
-    
-    <button id="refreshDataBtn" class="hidden liquid-glass-interactive p-3 rounded-2xl flex items-center justify-center gap-2 text-sm font-medium text-indigo-300 hover:text-white transition-all">
-      <i data-lucide="refresh-cw" class="w-4 h-4"></i> Обновить данные
-    </button>
-
     <div class="liquid-glass p-4 rounded-2xl flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="bg-indigo-500/20 p-2 rounded-lg">
@@ -275,6 +270,7 @@
         <button id="tabGame" class="text-gray-400 hover:text-white pb-2">Игры</button>
         <button id="tabUsers" class="text-gray-400 hover:text-white pb-2">Участники</button>
         <button id="tabSettings" class="text-gray-400 hover:text-white pb-2">Эффекты</button>
+        <button id="tabEditGame" class="text-gray-400 hover:text-white pb-2">Редактировать игру</button>
       </div>
 
       <form id="addVideoForm" class="flex flex-col gap-4">
@@ -321,6 +317,22 @@
         </div>
         <p class="text-[10px] text-gray-500">Этот эффект увидят ВСЕ пользователи на сайте.</p>
         <button type="submit" id="saveSettingsBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Применить для всех</button>
+      </form>
+
+      <!-- Новая форма для редактирования названия игры -->
+      <form id="editGameForm" class="flex flex-col gap-4 hidden">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Выберите игру для переименования</label>
+          <select id="selectEditGame" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900">
+            <option value="">Загрузка...</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Новое название игры</label>
+          <input type="text" id="newGameNameInput" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="Введите новое название">
+        </div>
+        <p class="text-[10px] text-gray-500">Внимание: это обновит название игры во ВСЕХ видео, где она упоминается.</p>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Обновить название везде</button>
       </form>
     </div>
   </div>
@@ -387,7 +399,7 @@
     // --- State ---
     const START_DATE = new Date('2023-07-19T00:00:00+05:00');
     const ADMIN_EMAIL_PREFIX = 'solexerg'; 
-    const DEFAULT_GAMES = ["Counter Strike","GTA","FTF","minecraft","fortnite","phasmophobia","REPO","Buckshot Roulette","Sons of the forest","roblox","rdr 2","Gang Beasts","a way out","nuclear nightmare","IRL","прочее"];
+    const DEFAULT_GAMES = ["Counter Strike","GTA V","FTF","minecraft","fortnite","phasmophobia","REPO","Buckshot Roulette","Sons of the forest","roblox","rdr 2","Gang Beasts","a way out","nuclear nightmare","IRL","прочее"];
 
     let games = [...DEFAULT_GAMES];
     let authorsByGame = {};
@@ -587,9 +599,8 @@
         $('authBtn').classList.add('hidden'); $('profileBtn').classList.remove('hidden');
         $('headerUsername').innerText = currentUser.username; $('headerAvatar').src = currentUser.avatar;
         currentUser.isAdmin ? $('adminPanelBtn').classList.remove('hidden') : $('adminPanelBtn').classList.add('hidden');
-        currentUser.isAdmin ? $('refreshDataBtn').classList.remove('hidden') : $('refreshDataBtn').classList.add('hidden');
       } else {
-        $('authBtn').classList.remove('hidden'); $('profileBtn').classList.add('hidden'); $('adminPanelBtn').classList.add('hidden'); $('refreshDataBtn').classList.add('hidden');
+        $('authBtn').classList.remove('hidden'); $('profileBtn').classList.add('hidden'); $('adminPanelBtn').classList.add('hidden');
       }
       lucide.createIcons();
     }
@@ -840,6 +851,7 @@
         if (currentView === 'games') renderCurrentView();
         updateDashboard();
         populateYearSelect();
+        populateEditGameSelect();
       });
 
       onSnapshot(collection(db, 'videos'), snap => {
@@ -896,6 +908,15 @@
         if (!members.find(m => m.uid === u.uid)) {
           select.innerHTML += `<option value="${u.uid}">${u.username}</option>`;
         }
+      });
+    }
+
+    function populateEditGameSelect() {
+      const select = $('selectEditGame');
+      if (!select) return;
+      select.innerHTML = '<option value="">Выберите игру...</option>';
+      games.forEach(g => {
+        select.innerHTML += `<option value="${g}">${g}</option>`;
       });
     }
 
@@ -1318,6 +1339,7 @@
       $('authorGame').innerHTML = games.map(g => `<option value="${g}">${g}</option>`).join('');
       populateUsersSelect();
       populateYearSelect();
+      populateEditGameSelect();
     }
 
     async function addVideo(e) {
@@ -1361,6 +1383,38 @@
       $('selectUser').value = '';
     }
 
+    async function editGame(e) {
+      e.preventDefault();
+      const oldName = $('selectEditGame').value;
+      const newName = $('newGameNameInput').value.trim();
+      if (!oldName || !newName) return;
+
+      try {
+        // 1. Обновляем название в коллекции игр
+        const qGames = query(collection(db, 'games'), where('name', '==', oldName));
+        const snapGames = await getDocs(qGames);
+        if (!snapGames.empty) {
+          const docId = snapGames.docs[0].id;
+          await updateDoc(doc(db, 'games', docId), { name: newName });
+        }
+
+        // 2. Обновляем название во всех видео
+        const qVideos = query(collection(db, 'videos'), where('games', 'array-contains', oldName));
+        const snapVideos = await getDocs(qVideos);
+        
+        for (const videoDoc of snapVideos.docs) {
+          const videoData = videoDoc.data();
+          const updatedGames = videoData.games.map(g => g === oldName ? newName : g);
+          await updateDoc(doc(db, 'videos', videoDoc.id), { games: updatedGames });
+        }
+
+        alert(`Игра переименована с "${oldName}" на "${newName}" во всех видео!`);
+        hideModal('adminModal','adminModalContainer'); e.target.reset();
+      } catch (err) {
+        alert('Ошибка при обновлении названия: ' + err.message);
+      }
+    }
+
     window.removeMember = async (docId) => {
       if (!confirm('Убрать этого участника с главной?')) return;
       await deleteDoc(doc(db, 'members', docId));
@@ -1394,64 +1448,6 @@
         renderCurrentView(); 
       };
 
-      // Кнопка обновления данных (Админ)
-      $('refreshDataBtn').onclick = async () => {
-        const btn = $('refreshDataBtn');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Загрузка...';
-        btn.disabled = true;
-
-        try {
-          // 1. Обновляем список игр
-          const gamesSnap = await getDocs(collection(db, 'games'));
-          if (!gamesSnap.empty) {
-            games = [];
-            gamesSnap.forEach(d => { const g = d.data().name; if (!games.includes(g)) games.push(g); });
-            DEFAULT_GAMES.forEach(g => { if (!games.includes(g)) games.push(g); });
-          }
-
-          // 2. Обновляем авторов
-          const authorsSnap = await getDocs(collection(db, 'authors'));
-          authorsByGame = {};
-          games.forEach(g => authorsByGame[g] = ['narcoeyes']);
-          authorsSnap.forEach(d => { 
-            const { game, name } = d.data(); 
-            if (!authorsByGame[game]) authorsByGame[game] = ['narcoeyes']; 
-            if (!authorsByGame[game].includes(name)) authorsByGame[game].push(name); 
-          });
-
-          // 3. Обновляем пользователей
-          const usersSnap = await getDocs(collection(db, 'users'));
-          allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
-
-          // 4. Обновляем видео
-          const videosSnap = await getDocs(collection(db, 'videos'));
-          videos = videosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-          // 5. Обновляем участников
-          const membersSnap = await getDocs(collection(db, 'members'));
-          members = membersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-          // ВАЖНО: Чиним названия игр в видео (если они переименованы)
-          // Если мы нашли видео с игрой, которой нет в списке games, пробуем найти похожую
-          // Но проще просто перерисовать всё
-          
-          updateDashboard();
-          updateMembersList();
-          if (currentView === 'games') renderCurrentView();
-          if (currentView === 'authors') renderCurrentView();
-          if (currentView === 'videos') renderVideosView();
-
-          btn.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> Обновлено';
-          setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; lucide.createIcons(); }, 2000);
-        } catch (err) {
-          console.error(err);
-          alert('Ошибка при обновлении данных: ' + err.message);
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-        }
-      };
-
       $('adminPanelBtn').onclick = () => { populateAdmin(); showModal('adminModal','adminModalContainer'); };
       $('closeAdminModal').onclick = () => hideModal('adminModal','adminModalContainer');
       $('closeVideoModal').onclick = closeVideoModal;
@@ -1460,16 +1456,18 @@
       $('threadCommentForm').onsubmit = submitThreadComment;
 
       // Переключение вкладок в админке
-      $('tabVideo').onclick = () => { $('addVideoForm').classList.remove('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('tabVideo').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabAuthor').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.remove('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('tabAuthor').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabGame').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.remove('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('tabGame').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabUsers').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.remove('hidden'); $('settingsForm').classList.add('hidden'); $('tabUsers').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabSettings').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.remove('hidden'); $('tabSettings').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabVideo').onclick = () => { $('addVideoForm').classList.remove('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabVideo').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabAuthor').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.remove('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabAuthor').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabGame').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.remove('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabGame').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabUsers').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.remove('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabUsers').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabSettings').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.remove('hidden'); $('editGameForm').classList.add('hidden'); $('tabSettings').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
+      $('tabEditGame').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.remove('hidden'); $('tabEditGame').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
 
       $('addVideoForm').onsubmit = addVideo;
       $('addAuthorForm').onsubmit = addAuthor;
       $('addGameForm').onsubmit = addGame;
       $('addUserForm').onsubmit = addMember;
+      $('editGameForm').onsubmit = editGame;
       
       $('commentForm').onsubmit = submitComment;
       $('cancelReply').onclick = () => { $('replyingToIndicator').classList.add('hidden'); activeParentId = null; };

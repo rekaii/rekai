@@ -103,6 +103,12 @@
   <canvas id="particleCanvas"></canvas>
 
   <div class="fixed left-6 top-32 z-40 flex flex-col gap-4 w-64 hidden lg:flex">
+    
+    <!-- Кнопка обновления (только для админа) -->
+    <button id="refreshDataBtn" class="hidden liquid-glass-interactive p-3 rounded-2xl flex items-center justify-center gap-2 text-sm font-medium text-indigo-300 hover:text-white transition-all">
+      <i data-lucide="refresh-cw" class="w-4 h-4"></i> Обновить данные
+    </button>
+
     <div class="liquid-glass p-4 rounded-2xl flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="bg-indigo-500/20 p-2 rounded-lg">
@@ -382,7 +388,7 @@
     // --- State ---
     const START_DATE = new Date('2023-07-19T00:00:00+05:00');
     const ADMIN_EMAIL_PREFIX = 'solexerg'; 
-    const DEFAULT_GAMES = ["Counter Strike","GTA","Fears to Fathom","Minecraft","Fortnite","Phasmophobia","REPO","Buckshot Roulette","Sons of the forest","Roblox","Red Dead Redemption","Gang Beasts","A way out","Nuclear nightmare","IRL","Прочее"];
+    const DEFAULT_GAMES = ["Counter Strike","GTA V","FTF","minecraft","fortnite","phasmophobia","REPO","Buckshot Roulette","Sons of the forest","roblox","rdr 2","Gang Beasts","a way out","nuclear nightmare","IRL","прочее"];
 
     let games = [...DEFAULT_GAMES];
     let authorsByGame = {};
@@ -582,8 +588,9 @@
         $('authBtn').classList.add('hidden'); $('profileBtn').classList.remove('hidden');
         $('headerUsername').innerText = currentUser.username; $('headerAvatar').src = currentUser.avatar;
         currentUser.isAdmin ? $('adminPanelBtn').classList.remove('hidden') : $('adminPanelBtn').classList.add('hidden');
+        currentUser.isAdmin ? $('refreshDataBtn').classList.remove('hidden') : $('refreshDataBtn').classList.add('hidden');
       } else {
-        $('authBtn').classList.remove('hidden'); $('profileBtn').classList.add('hidden'); $('adminPanelBtn').classList.add('hidden');
+        $('authBtn').classList.remove('hidden'); $('profileBtn').classList.add('hidden'); $('adminPanelBtn').classList.add('hidden'); $('refreshDataBtn').classList.add('hidden');
       }
       lucide.createIcons();
     }
@@ -924,9 +931,7 @@
 
       const nodeRadius = 55; 
       
-      // Если элементов мало, мы раздвигаем их по большему кругу, чтобы они не лезли на центр
       let baseRadius = Math.max(220, items.length * 18); 
-      // Если элементов совсем мало (меньше 6), делаем круг еще больше
       if (items.length < 6) baseRadius = 250;
 
       const count = items.length;
@@ -936,7 +941,6 @@
       const nodesData = items.map((item, index) => {
         const angle = (index / count) * 2 * Math.PI - Math.PI / 2;
         
-        // Меньше хаоса при малом количестве, чтобы они не залетали на центр
         const randomOffset = items.length < 6 ? (Math.random() * 10) - 5 : (Math.random() * 60) - 30; 
         const currentRadius = baseRadius + randomOffset;
         
@@ -993,12 +997,10 @@
 
       if ($('backToGamesBtn')) $('backToGamesBtn').onclick = () => { currentView = 'games'; renderCurrentView(); };
 
-      // --- Улучшенная "Желейная" Физика ---
       (function physics() {
         const k = 0.015; 
         const damping = 0.92;
         
-        // Внутренний радиус, который нельзя пересекать (защита текста)
         const safeZoneRadius = 160; 
         
         nodesData.forEach(n => {
@@ -1011,19 +1013,15 @@
           n.x += n.vx;
           n.y += n.vy;
 
-          // Жесткая защита центра (отталкивание от текста)
           const distToCenter = Math.hypot(n.x + nodeRadius - centerX, n.y + nodeRadius - centerY);
           if (distToCenter < safeZoneRadius) {
             const angle = Math.atan2(n.y + nodeRadius - centerY, n.x + nodeRadius - centerX);
-            // Возвращаем на безопасное расстояние
             const targetX = centerX + Math.cos(angle) * safeZoneRadius - nodeRadius;
             const targetY = centerY + Math.sin(angle) * safeZoneRadius - nodeRadius;
             
-            // Плавно выталкиваем
             n.x += (targetX - n.x) * 0.2;
             n.y += (targetY - n.y) * 0.2;
             
-            // Гасим скорость, чтобы не было отскоков
             n.vx *= 0.5;
             n.vy *= 0.5;
           }
@@ -1395,6 +1393,56 @@
         hideModal('profileModal','profileModalContainer'); 
         currentView = 'games'; 
         renderCurrentView(); 
+      };
+
+      // Кнопка обновления данных (Админ)
+      $('refreshDataBtn').onclick = async () => {
+        const btn = $('refreshDataBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Загрузка...';
+        btn.disabled = true;
+
+        try {
+          // Принудительно перезапрашиваем коллекции
+          const gamesSnap = await getDocs(collection(db, 'games'));
+          if (!gamesSnap.empty) {
+            games = [];
+            gamesSnap.forEach(d => { const g = d.data().name; if (!games.includes(g)) games.push(g); });
+            DEFAULT_GAMES.forEach(g => { if (!games.includes(g)) games.push(g); });
+          }
+
+          const authorsSnap = await getDocs(collection(db, 'authors'));
+          authorsByGame = {};
+          games.forEach(g => authorsByGame[g] = ['narcoeyes']);
+          authorsSnap.forEach(d => { 
+            const { game, name } = d.data(); 
+            if (!authorsByGame[game]) authorsByGame[game] = ['narcoeyes']; 
+            if (!authorsByGame[game].includes(name)) authorsByGame[game].push(name); 
+          });
+
+          const usersSnap = await getDocs(collection(db, 'users'));
+          allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+
+          const videosSnap = await getDocs(collection(db, 'videos'));
+          videos = videosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          const membersSnap = await getDocs(collection(db, 'members'));
+          members = membersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          updateDashboard();
+          updateMembersList();
+          if (currentView === 'games') renderCurrentView();
+          if (currentView === 'authors') renderCurrentView();
+          if (currentView === 'videos') renderVideosView();
+
+          btn.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> Обновлено';
+          setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; lucide.createIcons(); }, 2000);
+        } catch (err) {
+          console.error(err);
+          alert('Ошибка при обновлении данных: ' + err.message);
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }
       };
 
       $('adminPanelBtn').onclick = () => { populateAdmin(); showModal('adminModal','adminModalContainer'); };

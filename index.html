@@ -137,7 +137,7 @@
     <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
       <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i> Участники
     </h3>
-    <div id="membersList" class="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1 custom-scroll"></div>
+    <div id="membersList" class="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1"></div>
   </div>
 
   <button id="randomBtn" class="fixed bottom-6 right-6 z-40 liquid-glass-interactive p-4 rounded-full text-indigo-300 hover:text-white flex items-center justify-center group" title="Случайный откат">
@@ -154,6 +154,7 @@
       </div>
     </div>
     <div class="flex items-center gap-3 pointer-events-auto">
+      <!-- Кнопка избранного в шапке (появляется, если есть избранное) -->
       <button id="headerFavoritesBtn" class="hidden liquid-glass-interactive p-2.5 rounded-full text-red-400 hover:text-red-300" title="Мое избранное">
         <i data-lucide="heart" class="w-5 h-5 fill-current"></i>
       </button>
@@ -207,48 +208,26 @@
     </div>
   </div>
 
-  <!-- Profile Modal (ИСПРАВЛЕНО) -->
+  <!-- Profile Modal -->
   <div id="profileModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
-    <div class="liquid-glass rounded-3xl w-full max-w-4xl relative max-h-[92vh] flex flex-col transform scale-95 transition-transform duration-300" id="profileModalContainer">
-      
-      <!-- Баннер с аватаркой поверх -->
-      <div class="relative w-full h-40 md:h-56 shrink-0 rounded-t-3xl overflow-hidden">
-        <div id="profileBannerBg" class="absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900" style="mask-image: linear-gradient(to bottom, black 50%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);"></div>
-        
-        <!-- Аватарка (абсолютно спозиционирована) -->
-        <div class="absolute bottom-0 left-1/2 md:left-8 -translate-x-1/2 md:translate-x-0 translate-y-1/2 z-20">
-          <!-- Убрал цветную рамку, добавил тень -->
-          <img id="profileAvatar" src="https://via.placeholder.com/150" class="w-32 h-32 rounded-full object-cover bg-gray-800 shadow-2xl border-2 border-white/10">
-        </div>
-
+    <div class="liquid-glass rounded-3xl w-full max-w-3xl relative max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300" id="profileModalContainer">
+      <div class="relative w-full h-40 md:h-56">
+        <div id="profileBannerBg" class="absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl" style="mask-image: linear-gradient(to bottom, black 50%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);"></div>
         <button id="closeProfileModal" class="absolute top-4 right-4 z-20 text-gray-400 hover:text-white bg-black/40 rounded-full p-2 backdrop-blur-md"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
-      
-      <!-- Контентная часть (прокручиваемая) -->
-      <div class="px-6 md:px-8 pb-6 md:pb-8 pt-20 md:pt-24 relative flex-grow overflow-y-auto custom-scroll rounded-b-3xl bg-[#15161b]">
-        
-        <div class="flex flex-col md:flex-row gap-6 md:gap-8">
-          
-          <!-- Левая колонка -->
-          <div class="flex flex-col items-center md:items-start gap-4 md:w-1/3 z-10 shrink-0">
-            <div class="text-center md:text-left w-full">
+      <div class="px-6 md:px-8 pb-6 md:pb-8 relative">
+        <div class="flex flex-col md:flex-row gap-6 md:gap-8 -mt-16 md:-mt-20">
+          <div class="flex flex-col items-center gap-4 md:w-1/3 z-10">
+            <img id="profileAvatar" src="https://via.placeholder.com/150" class="w-32 h-32 rounded-full object-cover border-4 border-[#15161b] bg-gray-800 shadow-xl">
+            <div class="text-center w-full">
               <h2 id="profileUsernameDisplay" class="text-2xl font-bold text-white mb-1">Никнейм</h2>
               <p id="profileBioDisplay" class="text-sm text-gray-400 break-words">Описание профиля...</p>
             </div>
-            
-            <div class="flex flex-col gap-2 w-full mt-2">
-              <button id="profileFavBtn" class="hidden liquid-glass-interactive px-4 py-2 rounded-full text-sm font-medium text-red-400 flex items-center justify-center gap-2 hover:bg-red-500/10">
-                <i data-lucide="heart" class="w-4 h-4 fill-current"></i> Избранное
-              </button>
-              <button id="logoutBtn" class="text-xs text-red-400 hover:text-red-300 flex items-center justify-center gap-1 bg-red-400/10 px-4 py-2 rounded-full border border-red-400/20 transition-colors">
-                <i data-lucide="log-out" class="w-4 h-4"></i> Выйти из аккаунта
-              </button>
-            </div>
+            <button id="logoutBtn" class="mt-4 text-xs text-red-400 hover:text-red-300 flex items-center gap-1 bg-red-400/10 px-4 py-2 rounded-full border border-red-400/20">
+              <i data-lucide="log-out" class="w-4 h-4"></i> Выйти из аккаунта
+            </button>
           </div>
-
-          <!-- Правая колонка -->
-          <div class="md:w-2/3 flex flex-col gap-6 mt-4 md:mt-0 z-10">
-            
+          <div class="md:w-2/3 flex flex-col gap-6 mt-4 md:mt-24 z-10">
             <div id="editProfileBlock" class="bg-white/5 p-4 rounded-2xl border border-white/5">
               <h3 class="text-sm font-medium mb-3 text-white">Редактировать профиль</h3>
               <form id="editProfileForm" class="flex flex-col gap-3">
@@ -260,12 +239,15 @@
                 <button type="submit" id="editSubmitBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded-lg text-xs mt-1 transition-colors">Сохранить изменения</button>
               </form>
             </div>
-
             <div>
               <h3 class="text-sm font-medium mb-3 text-white flex items-center gap-2"><i data-lucide="video" class="w-4 h-4 text-indigo-400"></i> Автор откатов:</h3>
-              <div id="profileVideosList" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-2 custom-scroll"></div>
+              <div id="profileVideosList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
             </div>
-
+            <!-- Блок с избранным в профиле -->
+            <div id="profileFavoritesBlock" class="hidden">
+              <h3 class="text-sm font-medium mb-3 text-red-400 flex items-center gap-2"><i data-lucide="heart" class="w-4 h-4 fill-current"></i> Избранное:</h3>
+              <div id="profileFavoritesList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -277,7 +259,7 @@
     <div class="liquid-glass p-6 md:p-8 rounded-3xl w-full max-w-2xl relative max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="threadModalContainer">
       <button id="closeThreadModal" class="absolute top-4 right-4 text-gray-400 hover:text-white z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
       <h3 class="text-lg font-medium mb-4 text-white flex items-center gap-2"><i data-lucide="message-circle" class="w-5 h-5 text-indigo-400"></i> Обсуждение</h3>
-      <div id="threadCommentsList" class="flex-grow overflow-y-auto space-y-4 pr-2 mb-4 custom-scroll"></div>
+      <div id="threadCommentsList" class="flex-grow overflow-y-auto space-y-4 pr-2 mb-4"></div>
       <div class="pt-3 border-t border-white/10">
         <div id="threadReplyingTo" class="hidden text-xs text-indigo-300 mb-2 flex justify-between items-center bg-indigo-500/10 px-3 py-1 rounded-lg">
             <span>Ответ для: <strong id="threadReplyingToName"></strong></span>
@@ -293,10 +275,10 @@
 
   <!-- Admin Modal -->
   <div id="adminModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-    <div class="liquid-glass p-8 rounded-3xl w-full max-w-md relative max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300 custom-scroll" id="adminModalContainer">
+    <div class="liquid-glass p-8 rounded-3xl w-full max-w-md relative max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300" id="adminModalContainer">
       <button id="closeAdminModal" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       
-      <div class="flex border-b border-white/10 mb-6 pb-2 gap-2 text-xs sm:text-sm font-medium overflow-x-auto whitespace-nowrap custom-scroll">
+      <div class="flex border-b border-white/10 mb-6 pb-2 gap-2 text-xs sm:text-sm font-medium overflow-x-auto whitespace-nowrap">
         <button id="tabVideo" class="text-white border-b-2 border-indigo-500 pb-2">Видео</button>
         <button id="tabAuthor" class="text-gray-400 hover:text-white pb-2">Авторы</button>
         <button id="tabGame" class="text-gray-400 hover:text-white pb-2">Игры</button>
@@ -308,7 +290,7 @@
       <form id="addVideoForm" class="flex flex-col gap-4">
         <div><label class="block text-xs text-gray-400 mb-1">Ссылка на YouTube</label><input type="text" id="videoUrl" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="https://youtu.be/..."></div>
         <div><label class="block text-xs text-gray-400 mb-1">Название видео</label><input type="text" id="videoTitle" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"></div>
-        <div><label class="block text-xs text-gray-400 mb-1">Относится к играм</label><div id="adminGameSelector" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-white/5 rounded-xl border border-white/10 custom-scroll"></div></div>
+        <div><label class="block text-xs text-gray-400 mb-1">Относится к играм</label><div id="adminGameSelector" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-white/5 rounded-xl border border-white/10"></div></div>
         <div><label class="block text-xs text-gray-400 mb-1">Автор отката</label><select id="videoAuthor" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900"></select></div>
         <div><label class="block text-xs text-gray-400 mb-1">Год создания</label><select id="videoYear" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900">
           <option value="">Не указан</option>
@@ -375,8 +357,8 @@
   <div id="favoritesModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[80] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
     <div class="liquid-glass p-6 md:p-8 rounded-3xl w-full max-w-4xl relative max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="favoritesModalContainer">
       <button id="closeFavoritesModal" class="absolute top-4 right-4 text-gray-400 hover:text-white z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
-      <h3 id="favoritesModalTitle" class="text-lg font-medium mb-4 text-white flex items-center gap-2"><i data-lucide="heart" class="w-5 h-5 text-red-500 fill-current"></i> Избранное</h3>
-      <div id="favoritesList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto pr-2 custom-scroll"></div>
+      <h3 class="text-lg font-medium mb-4 text-white flex items-center gap-2"><i data-lucide="heart" class="w-5 h-5 text-red-500 fill-current"></i> Избранное</h3>
+      <div id="favoritesList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto pr-2"></div>
     </div>
   </div>
 
@@ -415,7 +397,7 @@
         </div>
         <div class="p-6 flex flex-col h-[500px] lg:h-full bg-white/5">
           <h3 class="text-lg font-medium mb-4 flex items-center gap-2"><i data-lucide="message-square" class="w-5 h-5 text-indigo-400"></i> Комментарии</h3>
-          <div id="commentsList" class="flex-grow overflow-y-auto space-y-4 pr-2 mb-4 custom-scroll"></div>
+          <div id="commentsList" class="flex-grow overflow-y-auto space-y-4 pr-2 mb-4"></div>
           <div class="pt-3 border-t border-white/10">
             <div id="replyingToIndicator" class="hidden text-xs text-indigo-300 mb-2 flex justify-between items-center bg-indigo-500/10 px-3 py-1 rounded-lg"><span>Ответ для: <strong id="replyingToName"></strong></span><button id="cancelReply" class="hover:text-white"><i data-lucide="x" class="w-3 h-3"></i></button></div>
             <form id="commentForm" class="flex gap-2"><input type="text" id="commentInput" placeholder="Написать комментарий..." required class="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"><button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm flex items-center justify-center"><i data-lucide="send" class="w-4 h-4"></i></button></form>
@@ -474,7 +456,6 @@
 
     let currentFavorites = [];
     let profileFavorites = [];
-    let activeProfileUsername = null;
 
     const $ = id => document.getElementById(id);
     const extractYouTubeId = url => { const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/); return (m && m[2].length === 11) ? m[2] : null; };
@@ -508,7 +489,6 @@
     let particles = [];
     let animationFrame;
     let particleMode = 'none';
-    let garlandInterval = null;
 
     onSnapshot(doc(db, 'settings', 'effects'), (docSnap) => {
       if (docSnap.exists()) globalEffectMode = docSnap.data().mode;
@@ -570,8 +550,6 @@
 
       particleMode = modeToUse;
 
-      if (garlandInterval) clearInterval(garlandInterval);
-
       if (particleMode === 'none' || !effectsEnabled) {
         canvas.style.display = 'none';
         cancelAnimationFrame(animationFrame);
@@ -586,8 +564,6 @@
         for (let i = 0; i < 50; i++) particles.push(createParticle());
         animateParticles();
       }
-
-      // Убрали звук гирлянды
     }
 
     function initParticles() {
@@ -618,6 +594,7 @@
       if (!effectsEnabled || particleMode === 'none') return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Рисуем гирлянду на фоне (если включен режим garland_snow)
       if (particleMode === 'garland_snow') {
         drawGarland();
       }
@@ -670,6 +647,7 @@
       }
       ctx.stroke();
 
+      // Лампочки
       const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'];
       for (let x = 20; x < canvas.width; x += 60) {
         const y = 50 + Math.sin(x / 100) * 30 + 10;
@@ -755,6 +733,7 @@
         $('headerUsername').innerText = currentUser.username; $('headerAvatar').src = currentUser.avatar;
         currentUser.isAdmin ? $('adminPanelBtn').classList.remove('hidden') : $('adminPanelBtn').classList.add('hidden');
         
+        // Показываем кнопку избранного в шапке, если есть избранные видео
         if (currentFavorites.length > 0) {
           $('headerFavoritesBtn').classList.remove('hidden');
         } else {
@@ -781,8 +760,6 @@
     async function openProfile(username = null) {
       const isOwnProfile = !username || (currentUser && currentUser.username === username);
       const targetUsername = isOwnProfile ? currentUser.username : username;
-      activeProfileUsername = targetUsername;
-
       try {
         if (isOwnProfile) {
           $('profileAvatar').src = currentUser.avatar; $('profileUsernameDisplay').innerText = currentUser.username;
@@ -790,13 +767,15 @@
           $('editUsername').value = currentUser.username; $('editBio').value = currentUser.bio || '';
           $('editAvatarFile').value = ''; $('editBannerFile').value = '';
           if (currentUser.banner) { $('profileBannerBg').style.backgroundImage = `url(${currentUser.banner})`; $('profileBannerBg').style.backgroundSize = 'cover'; $('profileBannerBg').style.backgroundPosition = 'center'; }
-          else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900'; }
+          else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
           $('editProfileBlock').classList.remove('hidden'); $('logoutBtn').classList.remove('hidden'); $('editError').classList.add('hidden');
           
+          // Загрузка избранного для своего профиля
           if (currentFavorites.length > 0) {
-            $('profileFavBtn').classList.remove('hidden');
+            $('profileFavoritesBlock').classList.remove('hidden');
+            await loadProfileFavorites(currentFavorites);
           } else {
-            $('profileFavBtn').classList.add('hidden');
+            $('profileFavoritesBlock').classList.add('hidden');
           }
           
           await loadUserVideos(currentUser.username);
@@ -808,14 +787,16 @@
           $('profileAvatar').src = userData.avatar || `https://ui-avatars.com/api/?name=${userData.username}&background=random`;
           $('profileUsernameDisplay').innerText = userData.username; $('profileBioDisplay').innerText = userData.bio || 'Без описания';
           if (userData.banner) { $('profileBannerBg').style.backgroundImage = `url(${userData.banner})`; $('profileBannerBg').style.backgroundSize = 'cover'; $('profileBannerBg').style.backgroundPosition = 'center'; }
-          else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900'; }
+          else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
           $('editProfileBlock').classList.add('hidden'); $('logoutBtn').classList.add('hidden');
           
+          // Загрузка избранного для чужого профиля
           const userFavs = userData.favorites || [];
           if (userFavs.length > 0) {
-            $('profileFavBtn').classList.remove('hidden');
+            $('profileFavoritesBlock').classList.remove('hidden');
+            await loadProfileFavorites(userFavs);
           } else {
-            $('profileFavBtn').classList.add('hidden');
+            $('profileFavoritesBlock').classList.add('hidden');
           }
           
           await loadUserVideos(userData.username);
@@ -896,6 +877,29 @@
         card.innerHTML = `<div class="relative aspect-video"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
         list.appendChild(card);
       });
+      lucide.createIcons();
+    }
+
+    async function loadProfileFavorites(favIds) {
+      const list = $('profileFavoritesList');
+      list.innerHTML = '';
+      if (favIds.length === 0) {
+        list.innerHTML = '<p class="text-xs text-gray-500 col-span-2">Пусто</p>';
+        return;
+      }
+      
+      for (const id of favIds) {
+        const docSnap = await getDoc(doc(db, 'videos', id));
+        if (docSnap.exists()) {
+          const v = docSnap.data();
+          const yt = extractYouTubeId(v.url);
+          const card = document.createElement('div');
+          card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group relative';
+          card.onclick = () => { hideModal('profileModal','profileModalContainer'); window.openVideoModal(id); };
+          card.innerHTML = `<div class="relative aspect-video"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
+          list.appendChild(card);
+        }
+      }
       lucide.createIcons();
     }
 
@@ -1025,11 +1029,13 @@
       const isFav = currentFavorites.includes(activeVideoId);
 
       if (isFav) {
+        // Удаляем
         currentFavorites = currentFavorites.filter(id => id !== activeVideoId);
         await updateDoc(doc(db, 'users', currentUser.uid), { favorites: arrayRemove(activeVideoId) });
         btn.classList.remove('active');
         $('heartBtnText').innerText = 'В избранное';
       } else {
+        // Добавляем
         currentFavorites.push(activeVideoId);
         await updateDoc(doc(db, 'users', currentUser.uid), { favorites: arrayUnion(activeVideoId) });
         btn.classList.add('active');
@@ -1039,44 +1045,27 @@
       updateAuthUI();
     }
 
-    async function openFavoritesModal(username) {
-      if (!username) return;
+    function openFavoritesModal() {
+      if (!currentUser) return;
       const list = $('favoritesList');
-      list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">Загрузка...</p>';
-      
-      const q = query(collection(db, 'users'), where('username', '==', username));
-      const snap = await getDocs(q);
-      if (snap.empty) { list.innerHTML = '<p class="text-sm text-red-400 col-span-3 text-center py-8">Пользователь не найден.</p>'; return; }
-      
-      const userData = snap.docs[0].data();
-      const favs = userData.favorites || [];
-
-      if (username === currentUser?.username) {
-        $('favoritesModalTitle').innerHTML = '<i data-lucide="heart" class="w-5 h-5 text-red-500 fill-current"></i> Мое избранное';
-      } else {
-        $('favoritesModalTitle').innerHTML = `<i data-lucide="heart" class="w-5 h-5 text-red-500 fill-current"></i> Избранное: ${username}`;
-      }
-      lucide.createIcons();
-
       list.innerHTML = '';
-      if (favs.length === 0) {
-        list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">Пусто</p>';
-        return;
-      }
 
-      for (const id of favs) {
-        const docSnap = await getDoc(doc(db, 'videos', id));
-        if (docSnap.exists()) {
-          const v = docSnap.data();
-          const yt = extractYouTubeId(v.url);
-          const card = document.createElement('div');
-          card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group relative';
-          card.onclick = () => { hideModal('favoritesModal','favoritesModalContainer'); window.openVideoModal(id); };
-          card.innerHTML = `<div class="relative aspect-video"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
-          list.appendChild(card);
-        }
+      if (currentFavorites.length === 0) {
+        list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">У вас пока нет избранных видео.</p>';
+      } else {
+        currentFavorites.forEach(async (id) => {
+          const docSnap = await getDoc(doc(db, 'videos', id));
+          if (docSnap.exists()) {
+            const v = docSnap.data();
+            const yt = extractYouTubeId(v.url);
+            const card = document.createElement('div');
+            card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group relative';
+            card.onclick = () => { hideModal('favoritesModal','favoritesModalContainer'); window.openVideoModal(id); };
+            card.innerHTML = `<div class="relative aspect-video"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
+            list.appendChild(card);
+          }
+        });
       }
-      
       lucide.createIcons();
       showModal('favoritesModal', 'favoritesModalContainer');
     }
@@ -1411,6 +1400,7 @@
         $('modalVideoYear').classList.add('hidden');
       }
 
+      // Настройка кнопки избранного
       const heartBtn = $('modalHeartBtn');
       if (currentUser && currentFavorites.includes(id)) {
         heartBtn.classList.add('active');
@@ -1643,6 +1633,7 @@
       if (!oldName || !newName) return;
 
       try {
+        // 1. Обновляем название в коллекции игр
         const qGames = query(collection(db, 'games'), where('name', '==', oldName));
         const snapGames = await getDocs(qGames);
         if (!snapGames.empty) {
@@ -1650,6 +1641,7 @@
           await updateDoc(doc(db, 'games', docId), { name: newName });
         }
 
+        // 2. Обновляем название во всех видео
         const qVideos = query(collection(db, 'videos'), where('games', 'array-contains', oldName));
         const snapVideos = await getDocs(qVideos);
         
@@ -1708,8 +1700,7 @@
       $('threadCommentForm').onsubmit = submitThreadComment;
 
       // Избранное
-      $('headerFavoritesBtn').onclick = () => { if(currentUser) openFavoritesModal(currentUser.username); };
-      $('profileFavBtn').onclick = () => { if(activeProfileUsername) openFavoritesModal(activeProfileUsername); };
+      $('headerFavoritesBtn').onclick = openFavoritesModal;
       $('modalHeartBtn').onclick = toggleFavorite;
 
       // Переключение вкладок в админке

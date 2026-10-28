@@ -209,26 +209,29 @@
 
   <!-- Profile Modal (ИСПРАВЛЕНО) -->
   <div id="profileModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
-    <div class="liquid-glass rounded-3xl w-full max-w-4xl relative max-h-[92vh] overflow-hidden flex flex-col transform scale-95 transition-transform duration-300" id="profileModalContainer">
+    <div class="liquid-glass rounded-3xl w-full max-w-4xl relative max-h-[92vh] flex flex-col transform scale-95 transition-transform duration-300" id="profileModalContainer">
       
-      <!-- Баннер -->
-      <div class="relative w-full h-40 md:h-56 shrink-0 bg-gray-800">
+      <!-- Баннер с аватаркой поверх -->
+      <div class="relative w-full h-40 md:h-56 shrink-0 rounded-t-3xl overflow-hidden">
         <div id="profileBannerBg" class="absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900" style="mask-image: linear-gradient(to bottom, black 50%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);"></div>
+        
+        <!-- Аватарка (абсолютно спозиционирована) -->
+        <div class="absolute bottom-0 left-1/2 md:left-8 -translate-x-1/2 md:translate-x-0 translate-y-1/2 z-20">
+          <!-- Убрал цветную рамку, добавил тень -->
+          <img id="profileAvatar" src="https://via.placeholder.com/150" class="w-32 h-32 rounded-full object-cover bg-gray-800 shadow-2xl border-2 border-white/10">
+        </div>
+
         <button id="closeProfileModal" class="absolute top-4 right-4 z-20 text-gray-400 hover:text-white bg-black/40 rounded-full p-2 backdrop-blur-md"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       
-      <div class="px-6 md:px-8 pb-6 md:pb-8 relative flex-grow overflow-y-auto custom-scroll">
+      <!-- Контентная часть (прокручиваемая) -->
+      <div class="px-6 md:px-8 pb-6 md:pb-8 pt-20 md:pt-24 relative flex-grow overflow-y-auto custom-scroll rounded-b-3xl bg-[#15161b]">
         
-        <!-- Аватарка (Абсолютное позиционирование, поверх баннера) -->
-        <div class="absolute -top-16 left-1/2 -translate-x-1/2 md:left-8 md:translate-x-0 z-20">
-          <img id="profileAvatar" src="https://via.placeholder.com/150" class="w-32 h-32 rounded-full object-cover border-4 border-[#6366f1] bg-gray-800 shadow-[0_0_20px_rgba(99,102,241,0.5)]">
-        </div>
-
-        <div class="flex flex-col md:flex-row gap-6 md:gap-8 pt-20 md:pt-4">
+        <div class="flex flex-col md:flex-row gap-6 md:gap-8">
           
-          <!-- Левая колонка (Ник, Био, Кнопки) -->
+          <!-- Левая колонка -->
           <div class="flex flex-col items-center md:items-start gap-4 md:w-1/3 z-10 shrink-0">
-            <div class="text-center md:text-left w-full mt-4">
+            <div class="text-center md:text-left w-full">
               <h2 id="profileUsernameDisplay" class="text-2xl font-bold text-white mb-1">Никнейм</h2>
               <p id="profileBioDisplay" class="text-sm text-gray-400 break-words">Описание профиля...</p>
             </div>
@@ -243,7 +246,7 @@
             </div>
           </div>
 
-          <!-- Правая колонка (Форма и Видео) -->
+          <!-- Правая колонка -->
           <div class="md:w-2/3 flex flex-col gap-6 mt-4 md:mt-0 z-10">
             
             <div id="editProfileBlock" class="bg-white/5 p-4 rounded-2xl border border-white/5">

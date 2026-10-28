@@ -1160,23 +1160,12 @@
       // Загружаем список пользователей с избранным
       await loadFavoritesUsers();
       
-      // Определяем, чьё избранное показывать
-      // Если текущий пользователь есть в списке (у него есть избранное), показываем его
-      // Иначе показываем первого из списка (или пусто, если список пуст)
-      if (favoritesUsers.some(u => u.uid === currentUser.uid)) {
-        // У текущего пользователя есть избранное — показываем его
-        selectedFavoritesUserUid = currentUser.uid;
-      } else if (favoritesUsers.length > 0) {
-        // У текущего пользователя нет избранного, но есть другие — показываем первого
-        selectedFavoritesUserUid = favoritesUsers[0].uid;
-      } else {
-        // Ни у кого нет избранного — показываем своё (пустое)
-        selectedFavoritesUserUid = currentUser.uid;
-      }
+      // ВСЕГДА по умолчанию показываем своё избранное
+      selectedFavoritesUserUid = currentUser.uid;
       
       populateFavoritesUserSelect();
       
-      // Загружаем избранное для выбранного пользователя
+      // Загружаем избранное для выбранного пользователя (своего)
       if (selectedFavoritesUserUid) {
         await loadFavoritesForUser(selectedFavoritesUserUid);
       } else {

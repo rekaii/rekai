@@ -357,7 +357,15 @@
   <div id="favoritesModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[80] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
     <div class="liquid-glass p-6 md:p-8 rounded-3xl w-full max-w-4xl relative max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="favoritesModalContainer">
       <button id="closeFavoritesModal" class="absolute top-4 right-4 text-gray-400 hover:text-white z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
-      <h3 class="text-lg font-medium mb-4 text-white flex items-center gap-2"><i data-lucide="heart" class="w-5 h-5 text-red-500 fill-current"></i> Избранное</h3>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <h3 class="text-lg font-medium text-white flex items-center gap-2"><i data-lucide="heart" class="w-5 h-5 text-red-500 fill-current"></i> Избранное</h3>
+        <div class="relative w-full sm:w-64">
+          <select id="favoritesUserSelect" class="w-full liquid-glass-interactive appearance-none bg-white/5 border border-white/10 rounded-full px-4 py-2 pr-10 text-sm text-white focus:outline-none cursor-pointer">
+            <!-- Заполняется динамически -->
+          </select>
+          <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+        </div>
+      </div>
       <div id="favoritesList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto pr-2"></div>
     </div>
   </div>
@@ -456,6 +464,10 @@
 
     let currentFavorites = [];
     let profileFavorites = [];
+
+    // Для выбора пользователя в избранном
+    let favoritesUsers = [];          // список { uid, username, avatar }
+    let selectedFavoritesUserUid = null; // null означает "моё избранное"
 
     const $ = id => document.getElementById(id);
     const extractYouTubeId = url => { const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/); return (m && m[2].length === 11) ? m[2] : null; };
@@ -1045,28 +1057,122 @@
       updateAuthUI();
     }
 
-    function openFavoritesModal() {
-      if (!currentUser) return;
+    // Загрузка списка пользователей, у которых есть избранное
+    async function loadFavoritesUsers() {
+      const usersWithFavorites = [];
+      const q = query(collection(db, 'users'));
+      const snap = await getDocs(q);
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.favorites && data.favorites.length > 0) {
+          usersWithFavorites.push({
+            uid: docSnap.id,
+            username: data.username,
+            avatar: data.avatar || `https://ui-avatars.com/api/?name=${data.username}&background=random`
+          });
+        }
+      });
+      favoritesUsers = usersWithFavorites;
+      return favoritesUsers;
+    }
+
+    // Обновление селекта пользователей в модалке избранного
+    function populateFavoritesUserSelect() {
+      const select = $('favoritesUserSelect');
+      if (!select) return;
+      
+      // Очищаем
+      select.innerHTML = '';
+      
+      // Добавляем текущего пользователя, если он есть и у него есть избранное
+      if (currentUser && currentFavorites.length > 0) {
+        const option = document.createElement('option');
+        option.value = currentUser.uid;
+        option.textContent = `Моё избранное (${currentUser.username})`;
+        select.appendChild(option);
+      }
+      
+      // Добавляем остальных пользователей (кроме текущего), у которых есть избранное
+      favoritesUsers.forEach(u => {
+        if (currentUser && u.uid === currentUser.uid) return; // уже добавили
+        const option = document.createElement('option');
+        option.value = u.uid;
+        option.textContent = u.username;
+        select.appendChild(option);
+      });
+      
+      // Если ничего нет — показываем заглушку
+      if (select.children.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Нет пользователей с избранным';
+        select.appendChild(option);
+      }
+      
+      // Восстанавливаем выбранное значение или ставим первое
+      if (selectedFavoritesUserUid && Array.from(select.options).some(o => o.value === selectedFavoritesUserUid)) {
+        select.value = selectedFavoritesUserUid;
+      } else if (select.children.length > 0) {
+        select.selectedIndex = 0;
+        selectedFavoritesUserUid = select.value;
+      }
+    }
+
+    // Загрузка избранных видео для выбранного пользователя
+    async function loadFavoritesForUser(uid) {
       const list = $('favoritesList');
       list.innerHTML = '';
-
-      if (currentFavorites.length === 0) {
-        list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">У вас пока нет избранных видео.</p>';
+      
+      let favIds = [];
+      if (uid === currentUser?.uid) {
+        favIds = currentFavorites;
       } else {
-        currentFavorites.forEach(async (id) => {
-          const docSnap = await getDoc(doc(db, 'videos', id));
-          if (docSnap.exists()) {
-            const v = docSnap.data();
-            const yt = extractYouTubeId(v.url);
-            const card = document.createElement('div');
-            card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group relative';
-            card.onclick = () => { hideModal('favoritesModal','favoritesModalContainer'); window.openVideoModal(id); };
-            card.innerHTML = `<div class="relative aspect-video"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
-            list.appendChild(card);
-          }
-        });
+        const userDoc = await getDoc(doc(db, 'users', uid));
+        if (userDoc.exists()) {
+          favIds = userDoc.data().favorites || [];
+        }
+      }
+      
+      if (favIds.length === 0) {
+        list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">У этого пользователя пока нет избранных видео.</p>';
+        return;
+      }
+      
+      for (const id of favIds) {
+        const docSnap = await getDoc(doc(db, 'videos', id));
+        if (docSnap.exists()) {
+          const v = docSnap.data();
+          const yt = extractYouTubeId(v.url);
+          const card = document.createElement('div');
+          card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group relative';
+          card.onclick = () => { hideModal('favoritesModal','favoritesModalContainer'); window.openVideoModal(id); };
+          card.innerHTML = `<div class="relative aspect-video"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
+          list.appendChild(card);
+        }
       }
       lucide.createIcons();
+    }
+
+    async function openFavoritesModal() {
+      if (!currentUser) return;
+      
+      // Загружаем список пользователей с избранным
+      await loadFavoritesUsers();
+      
+      // Определяем, чьё избранное показывать: если пользователь ещё не выбирал, показываем своё (если есть)
+      if (selectedFavoritesUserUid === null || !favoritesUsers.some(u => u.uid === selectedFavoritesUserUid) && selectedFavoritesUserUid !== currentUser.uid) {
+        selectedFavoritesUserUid = currentUser && currentFavorites.length > 0 ? currentUser.uid : (favoritesUsers[0]?.uid || '');
+      }
+      
+      populateFavoritesUserSelect();
+      
+      // Загружаем избранное для выбранного пользователя
+      if (selectedFavoritesUserUid) {
+        await loadFavoritesForUser(selectedFavoritesUserUid);
+      } else {
+        $('favoritesList').innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">Нет доступных избранных видео.</p>';
+      }
+      
       showModal('favoritesModal', 'favoritesModalContainer');
     }
 
@@ -1702,6 +1808,19 @@
       // Избранное
       $('headerFavoritesBtn').onclick = openFavoritesModal;
       $('modalHeartBtn').onclick = toggleFavorite;
+
+      // Обработчик смены пользователя в модалке избранного
+      const favoritesUserSelect = $('favoritesUserSelect');
+      if (favoritesUserSelect) {
+        favoritesUserSelect.addEventListener('change', async (e) => {
+          selectedFavoritesUserUid = e.target.value;
+          if (selectedFavoritesUserUid) {
+            await loadFavoritesForUser(selectedFavoritesUserUid);
+          } else {
+            $('favoritesList').innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">Выберите пользователя.</p>';
+          }
+        });
+      }
 
       // Переключение вкладок в админке
       $('tabVideo').onclick = () => { $('addVideoForm').classList.remove('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabVideo').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };

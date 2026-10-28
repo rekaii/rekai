@@ -154,7 +154,7 @@
       </div>
     </div>
     <div class="flex items-center gap-3 pointer-events-auto">
-      <!-- Кнопка избранного в шапке (появляется, если есть избранное) -->
+      <!-- Кнопка избранного в шапке (теперь показывается всегда для авторизованных) -->
       <button id="headerFavoritesBtn" class="hidden liquid-glass-interactive p-2.5 rounded-full text-red-400 hover:text-red-300" title="Мое избранное">
         <i data-lucide="heart" class="w-5 h-5 fill-current"></i>
       </button>
@@ -745,12 +745,8 @@
         $('headerUsername').innerText = currentUser.username; $('headerAvatar').src = currentUser.avatar;
         currentUser.isAdmin ? $('adminPanelBtn').classList.remove('hidden') : $('adminPanelBtn').classList.add('hidden');
         
-        // Показываем кнопку избранного в шапке, если есть избранные видео
-        if (currentFavorites.length > 0) {
-          $('headerFavoritesBtn').classList.remove('hidden');
-        } else {
-          $('headerFavoritesBtn').classList.add('hidden');
-        }
+        // Показываем кнопку избранного в шапке ВСЕГДА для авторизованных
+        $('headerFavoritesBtn').classList.remove('hidden');
       } else {
         $('authBtn').classList.remove('hidden'); $('profileBtn').classList.add('hidden'); $('adminPanelBtn').classList.add('hidden');
         $('headerFavoritesBtn').classList.add('hidden');
@@ -1084,8 +1080,8 @@
       // Очищаем
       select.innerHTML = '';
       
-      // Добавляем текущего пользователя, если он есть и у него есть избранное
-      if (currentUser && currentFavorites.length > 0) {
+      // Добавляем текущего пользователя, если он есть (всегда, даже если избранное пустое)
+      if (currentUser) {
         const option = document.createElement('option');
         option.value = currentUser.uid;
         option.textContent = `Моё избранное (${currentUser.username})`;
@@ -1101,7 +1097,7 @@
         select.appendChild(option);
       });
       
-      // Если ничего нет — показываем заглушку
+      // Если ничего нет (нет даже текущего) — показываем заглушку
       if (select.children.length === 0) {
         const option = document.createElement('option');
         option.value = '';
@@ -1134,7 +1130,12 @@
       }
       
       if (favIds.length === 0) {
-        list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">У этого пользователя пока нет избранных видео.</p>';
+        // Проверяем, чьё это избранное
+        if (uid === currentUser?.uid) {
+          list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">Вы еще не добавили ни одного видео в избранное.</p>';
+        } else {
+          list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">У этого пользователя пока нет избранных видео.</p>';
+        }
         return;
       }
       
@@ -1159,9 +1160,18 @@
       // Загружаем список пользователей с избранным
       await loadFavoritesUsers();
       
-      // Определяем, чьё избранное показывать: если пользователь ещё не выбирал, показываем своё (если есть)
-      if (selectedFavoritesUserUid === null || !favoritesUsers.some(u => u.uid === selectedFavoritesUserUid) && selectedFavoritesUserUid !== currentUser.uid) {
-        selectedFavoritesUserUid = currentUser && currentFavorites.length > 0 ? currentUser.uid : (favoritesUsers[0]?.uid || '');
+      // Определяем, чьё избранное показывать
+      // Если текущий пользователь есть в списке (у него есть избранное), показываем его
+      // Иначе показываем первого из списка (или пусто, если список пуст)
+      if (favoritesUsers.some(u => u.uid === currentUser.uid)) {
+        // У текущего пользователя есть избранное — показываем его
+        selectedFavoritesUserUid = currentUser.uid;
+      } else if (favoritesUsers.length > 0) {
+        // У текущего пользователя нет избранного, но есть другие — показываем первого
+        selectedFavoritesUserUid = favoritesUsers[0].uid;
+      } else {
+        // Ни у кого нет избранного — показываем своё (пустое)
+        selectedFavoritesUserUid = currentUser.uid;
       }
       
       populateFavoritesUserSelect();

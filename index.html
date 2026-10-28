@@ -207,21 +207,28 @@
     </div>
   </div>
 
-  <!-- Profile Modal (ИСПРАВЛЕНА ВЫСОТА И СКРОЛЛ) -->
+  <!-- Profile Modal (ИСПРАВЛЕНО) -->
   <div id="profileModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
     <div class="liquid-glass rounded-3xl w-full max-w-4xl relative max-h-[92vh] overflow-hidden flex flex-col transform scale-95 transition-transform duration-300" id="profileModalContainer">
       
-      <div class="relative w-full h-40 md:h-56 shrink-0">
-        <div id="profileBannerBg" class="absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl" style="mask-image: linear-gradient(to bottom, black 50%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);"></div>
+      <!-- Баннер -->
+      <div class="relative w-full h-40 md:h-56 shrink-0 bg-gray-800">
+        <div id="profileBannerBg" class="absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900" style="mask-image: linear-gradient(to bottom, black 50%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);"></div>
         <button id="closeProfileModal" class="absolute top-4 right-4 z-20 text-gray-400 hover:text-white bg-black/40 rounded-full p-2 backdrop-blur-md"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       
       <div class="px-6 md:px-8 pb-6 md:pb-8 relative flex-grow overflow-y-auto custom-scroll">
-        <div class="flex flex-col md:flex-row gap-6 md:gap-8 -mt-16 md:-mt-20">
+        
+        <!-- Аватарка (Абсолютное позиционирование, поверх баннера) -->
+        <div class="absolute -top-16 left-1/2 -translate-x-1/2 md:left-8 md:translate-x-0 z-20">
+          <img id="profileAvatar" src="https://via.placeholder.com/150" class="w-32 h-32 rounded-full object-cover border-4 border-[#6366f1] bg-gray-800 shadow-[0_0_20px_rgba(99,102,241,0.5)]">
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-6 md:gap-8 pt-20 md:pt-4">
           
-          <div class="flex flex-col items-center gap-4 md:w-1/3 z-10 shrink-0">
-            <img id="profileAvatar" src="https://via.placeholder.com/150" class="w-32 h-32 rounded-full object-cover border-4 border-[#15161b] bg-gray-800 shadow-xl">
-            <div class="text-center w-full">
+          <!-- Левая колонка (Ник, Био, Кнопки) -->
+          <div class="flex flex-col items-center md:items-start gap-4 md:w-1/3 z-10 shrink-0">
+            <div class="text-center md:text-left w-full mt-4">
               <h2 id="profileUsernameDisplay" class="text-2xl font-bold text-white mb-1">Никнейм</h2>
               <p id="profileBioDisplay" class="text-sm text-gray-400 break-words">Описание профиля...</p>
             </div>
@@ -236,7 +243,8 @@
             </div>
           </div>
 
-          <div class="md:w-2/3 flex flex-col gap-6 mt-4 md:mt-24 z-10">
+          <!-- Правая колонка (Форма и Видео) -->
+          <div class="md:w-2/3 flex flex-col gap-6 mt-4 md:mt-0 z-10">
             
             <div id="editProfileBlock" class="bg-white/5 p-4 rounded-2xl border border-white/5">
               <h3 class="text-sm font-medium mb-3 text-white">Редактировать профиль</h3>
@@ -497,6 +505,7 @@
     let particles = [];
     let animationFrame;
     let particleMode = 'none';
+    let garlandInterval = null;
 
     onSnapshot(doc(db, 'settings', 'effects'), (docSnap) => {
       if (docSnap.exists()) globalEffectMode = docSnap.data().mode;
@@ -558,6 +567,8 @@
 
       particleMode = modeToUse;
 
+      if (garlandInterval) clearInterval(garlandInterval);
+
       if (particleMode === 'none' || !effectsEnabled) {
         canvas.style.display = 'none';
         cancelAnimationFrame(animationFrame);
@@ -572,6 +583,8 @@
         for (let i = 0; i < 50; i++) particles.push(createParticle());
         animateParticles();
       }
+
+      // Убрали звук гирлянды
     }
 
     function initParticles() {
@@ -774,7 +787,7 @@
           $('editUsername').value = currentUser.username; $('editBio').value = currentUser.bio || '';
           $('editAvatarFile').value = ''; $('editBannerFile').value = '';
           if (currentUser.banner) { $('profileBannerBg').style.backgroundImage = `url(${currentUser.banner})`; $('profileBannerBg').style.backgroundSize = 'cover'; $('profileBannerBg').style.backgroundPosition = 'center'; }
-          else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
+          else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900'; }
           $('editProfileBlock').classList.remove('hidden'); $('logoutBtn').classList.remove('hidden'); $('editError').classList.add('hidden');
           
           if (currentFavorites.length > 0) {
@@ -792,7 +805,7 @@
           $('profileAvatar').src = userData.avatar || `https://ui-avatars.com/api/?name=${userData.username}&background=random`;
           $('profileUsernameDisplay').innerText = userData.username; $('profileBioDisplay').innerText = userData.bio || 'Без описания';
           if (userData.banner) { $('profileBannerBg').style.backgroundImage = `url(${userData.banner})`; $('profileBannerBg').style.backgroundSize = 'cover'; $('profileBannerBg').style.backgroundPosition = 'center'; }
-          else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
+          else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900'; }
           $('editProfileBlock').classList.add('hidden'); $('logoutBtn').classList.add('hidden');
           
           const userFavs = userData.favorites || [];

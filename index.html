@@ -96,6 +96,11 @@
       z-index: 5; 
       transition: opacity 0.5s ease;
     }
+
+    /* Анимация сердечка */
+    .heart-btn svg { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .heart-btn.active svg { fill: #ef4444; stroke: #ef4444; transform: scale(1.2); }
+    .heart-btn:active svg { transform: scale(0.8); }
   </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -149,6 +154,10 @@
       </div>
     </div>
     <div class="flex items-center gap-3 pointer-events-auto">
+      <!-- Кнопка избранного в шапке (появляется, если есть избранное) -->
+      <button id="headerFavoritesBtn" class="hidden liquid-glass-interactive p-2.5 rounded-full text-red-400 hover:text-red-300" title="Мое избранное">
+        <i data-lucide="heart" class="w-5 h-5 fill-current"></i>
+      </button>
       <button id="toggleEffectBtn" class="liquid-glass-interactive p-2.5 rounded-full text-gray-300 hover:text-white" title="Переключить эффект">
         <i data-lucide="sparkles" class="w-5 h-5"></i>
       </button>
@@ -234,6 +243,11 @@
               <h3 class="text-sm font-medium mb-3 text-white flex items-center gap-2"><i data-lucide="video" class="w-4 h-4 text-indigo-400"></i> Автор откатов:</h3>
               <div id="profileVideosList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
             </div>
+            <!-- Блок с избранным в профиле -->
+            <div id="profileFavoritesBlock" class="hidden">
+              <h3 class="text-sm font-medium mb-3 text-red-400 flex items-center gap-2"><i data-lucide="heart" class="w-4 h-4 fill-current"></i> Избранное:</h3>
+              <div id="profileFavoritesList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -312,6 +326,9 @@
             <option value="auto">Автоматически (по дате)</option>
             <option value="snow">Снег (Зима)</option>
             <option value="leaves">Листья (Осень)</option>
+            <option value="hearts">Сердечки (14 февраля)</option>
+            <option value="garland_snow">Гирлянда + Снег (Новый год)</option>
+            <option value="confetti">Хлопушки (Дни рождения)</option>
             <option value="none">Отключить эффекты</option>
           </select>
         </div>
@@ -319,7 +336,6 @@
         <button type="submit" id="saveSettingsBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Применить для всех</button>
       </form>
 
-      <!-- Новая форма для редактирования названия игры -->
       <form id="editGameForm" class="flex flex-col gap-4 hidden">
         <div>
           <label class="block text-xs text-gray-400 mb-1">Выберите игру для переименования</label>
@@ -334,6 +350,15 @@
         <p class="text-[10px] text-gray-500">Внимание: это обновит название игры во ВСЕХ видео, где она упоминается.</p>
         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Обновить название везде</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Favorites Modal -->
+  <div id="favoritesModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[80] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
+    <div class="liquid-glass p-6 md:p-8 rounded-3xl w-full max-w-4xl relative max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="favoritesModalContainer">
+      <button id="closeFavoritesModal" class="absolute top-4 right-4 text-gray-400 hover:text-white z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <h3 class="text-lg font-medium mb-4 text-white flex items-center gap-2"><i data-lucide="heart" class="w-5 h-5 text-red-500 fill-current"></i> Избранное</h3>
+      <div id="favoritesList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto pr-2"></div>
     </div>
   </div>
 
@@ -355,12 +380,17 @@
             </div>
           </div>
           
-          <div id="adminYearBlock" class="mt-6 pt-4 border-t border-white/10 hidden">
-            <label class="block text-[10px] text-gray-400 mb-2 uppercase tracking-wider">Изменить год видео (Только для админа)</label>
-            <div class="flex items-center gap-2">
-              <select id="editVideoYearSelect" class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900 cursor-pointer">
-              </select>
-              <button id="saveVideoYearBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-1.5 px-3 rounded-lg text-xs transition-colors">Сохранить</button>
+          <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
+            <button id="modalHeartBtn" class="heart-btn flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm font-medium">
+              <i data-lucide="heart" class="w-5 h-5"></i> <span id="heartBtnText">В избранное</span>
+            </button>
+            <div id="adminYearBlock" class="hidden">
+              <label class="block text-[10px] text-gray-400 mb-2 uppercase tracking-wider">Изменить год видео (Только для админа)</label>
+              <div class="flex items-center gap-2">
+                <select id="editVideoYearSelect" class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900 cursor-pointer">
+                </select>
+                <button id="saveVideoYearBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-1.5 px-3 rounded-lg text-xs transition-colors">Сохранить</button>
+              </div>
             </div>
           </div>
 
@@ -380,7 +410,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, setDoc, updateDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, setDoc, updateDoc, where, getDocs, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBTFmATV9rN0BwKfLbTp1jI1B7lD2E-bxI",
@@ -424,6 +454,9 @@
     let globalEffectMode = 'auto';
     let effectsEnabled = true;
 
+    let currentFavorites = [];
+    let profileFavorites = [];
+
     const $ = id => document.getElementById(id);
     const extractYouTubeId = url => { const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/); return (m && m[2].length === 11) ? m[2] : null; };
     const calculateDays = () => { const d = Math.floor(Math.abs(new Date() - START_DATE)/(1000*60*60*24)); $('daysCounter').innerText = d; };
@@ -450,7 +483,7 @@
       if (e.target.closest('button') || e.target.closest('.flower-node') || e.target.closest('.liquid-glass-interactive')) playClickSound();
     });
 
-    // --- Эффекты (Снег / Листья) ---
+    // --- Эффекты ---
     const canvas = $('particleCanvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
@@ -472,14 +505,47 @@
       alert('Эффект обновлен для всех!');
     };
 
+    function getAutoParticleMode() {
+      const now = new Date();
+      const month = now.getMonth(); // 0-11
+      const date = now.getDate();
+
+      // 27 декабря - 3 января (Гирлянда + снег)
+      if ((month === 11 && date >= 27) || (month === 0 && date <= 3)) {
+        return 'garland_snow';
+      }
+      // 14 февраля (Сердечки)
+      if (month === 1 && date === 14) {
+        return 'hearts';
+      }
+      // Дни рождения (Хлопушки)
+      const bdays = [
+        { m: 11, d: 15 }, // 15 декабря
+        { m: 4, d: 27 },  // 27 мая
+        { m: 5, d: 22 },  // 22 июня
+        { m: 7, d: 29 },  // 29 августа
+        { m: 10, d: 1 },  // 1 ноября
+        { m: 6, d: 31 },  // 31 июля
+        { m: 1, d: 2 },   // 2 февраля
+        { m: 0, d: 30 }   // 30 января
+      ];
+      for (let b of bdays) {
+        if (month === b.m && date === b.d) return 'confetti';
+      }
+
+      // Осень (Сентябрь - Ноябрь)
+      if (month >= 8 && month <= 10) return 'leaves';
+      // Зима (Декабрь - Февраль, кроме НГ и 14 фев)
+      if (month === 11 || month === 0 || month === 1) return 'snow';
+
+      return 'none';
+    }
+
     function updateParticleMode() {
-      const month = new Date().getMonth(); 
       let modeToUse = globalEffectMode;
 
       if (modeToUse === 'auto') {
-        if (month === 11 || month === 0 || month === 1) modeToUse = 'snow';
-        else if (month === 8 || month === 9 || month === 10) modeToUse = 'leaves';
-        else modeToUse = 'none';
+        modeToUse = getAutoParticleMode();
       }
 
       particleMode = modeToUse;
@@ -495,7 +561,7 @@
       canvas.style.display = 'block';
       resizeCanvas();
       if (particles.length === 0) {
-        for (let i = 0; i < 30; i++) particles.push(createParticle());
+        for (let i = 0; i < 50; i++) particles.push(createParticle());
         animateParticles();
       }
     }
@@ -513,21 +579,52 @@
     }
 
     function createParticle() {
-      if (particleMode === 'snow') {
-        return { x: Math.random() * canvas.width, y: Math.random() * canvas.height, radius: Math.random() * 2 + 1, speedY: Math.random() * 1 + 0.5, speedX: Math.random() * 0.5 - 0.25, opacity: Math.random() * 0.5 + 0.3 };
+      if (particleMode === 'snow' || particleMode === 'garland_snow') {
+        return { x: Math.random() * canvas.width, y: Math.random() * canvas.height, radius: Math.random() * 2 + 1, speedY: Math.random() * 1 + 0.5, speedX: Math.random() * 0.5 - 0.25, opacity: Math.random() * 0.5 + 0.3, type: 'snow' };
+      } else if (particleMode === 'hearts') {
+        return { x: Math.random() * canvas.width, y: Math.random() * -canvas.height, size: Math.random() * 8 + 4, speedY: Math.random() * 1.5 + 1, speedX: Math.random() * 1 - 0.5, rotation: Math.random() * Math.PI * 2, rotSpeed: Math.random() * 0.05 - 0.025, color: `hsl(${Math.random() * 20 + 340}, 80%, 60%)`, type: 'heart' };
+      } else if (particleMode === 'confetti') {
+        return { x: Math.random() * canvas.width, y: Math.random() * -canvas.height, size: Math.random() * 6 + 4, speedY: Math.random() * 2 + 1, speedX: Math.random() * 2 - 1, rotation: Math.random() * Math.PI * 2, rotSpeed: Math.random() * 0.1 - 0.05, color: `hsl(${Math.random() * 360}, 80%, 60%)`, type: 'confetti' };
       } else {
-        return { x: Math.random() * canvas.width, y: Math.random() * -canvas.height, size: Math.random() * 10 + 5, speedY: Math.random() * 1.5 + 1, speedX: Math.random() * 1 - 0.5, rotation: Math.random() * Math.PI * 2, rotSpeed: Math.random() * 0.05 - 0.025, color: `hsl(${Math.random() * 20 + 10}, 80%, 50%)` };
+        return { x: Math.random() * canvas.width, y: Math.random() * -canvas.height, size: Math.random() * 10 + 5, speedY: Math.random() * 1.5 + 1, speedX: Math.random() * 1 - 0.5, rotation: Math.random() * Math.PI * 2, rotSpeed: Math.random() * 0.05 - 0.025, color: `hsl(${Math.random() * 20 + 10}, 80%, 50%)`, type: 'leaf' };
       }
     }
 
     function animateParticles() {
       if (!effectsEnabled || particleMode === 'none') return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Рисуем гирлянду на фоне (если включен режим garland_snow)
+      if (particleMode === 'garland_snow') {
+        drawGarland();
+      }
+      
       particles.forEach((p) => {
-        if (particleMode === 'snow') {
+        if (p.type === 'snow') {
           p.y += p.speedY; p.x += p.speedX;
           ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`; ctx.fill();
           if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+        } else if (p.type === 'heart') {
+          p.y += p.speedY; p.x += p.speedX + Math.sin(p.y / 50) * 0.5; p.rotation += p.rotSpeed;
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          const topCurveHeight = p.size * 0.3;
+          ctx.moveTo(0, topCurveHeight);
+          ctx.bezierCurveTo(0, 0, -p.size / 2, 0, -p.size / 2, topCurveHeight);
+          ctx.bezierCurveTo(-p.size / 2, (p.size + topCurveHeight) / 2, 0, p.size, 0, p.size);
+          ctx.bezierCurveTo(0, p.size, p.size / 2, (p.size + topCurveHeight) / 2, p.size / 2, topCurveHeight);
+          ctx.bezierCurveTo(p.size / 2, 0, 0, 0, 0, topCurveHeight);
+          ctx.fill();
+          ctx.restore();
+          if (p.y > canvas.height) { p.y = -20; p.x = Math.random() * canvas.width; }
+        } else if (p.type === 'confetti') {
+          p.y += p.speedY; p.x += p.speedX + Math.sin(p.y / 30) * 0.5; p.rotation += p.rotSpeed;
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+          ctx.restore();
+          if (p.y > canvas.height) { p.y = -20; p.x = Math.random() * canvas.width; }
         } else {
           p.y += p.speedY; p.x += p.speedX + Math.sin(p.y / 50) * 0.5; p.rotation += p.rotSpeed;
           ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation); ctx.fillStyle = p.color;
@@ -537,6 +634,32 @@
         }
       });
       animationFrame = requestAnimationFrame(animateParticles);
+    }
+
+    function drawGarland() {
+      ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let x = 0; x < canvas.width; x += 10) {
+        const y = 50 + Math.sin(x / 100) * 30;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Лампочки
+      const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'];
+      for (let x = 20; x < canvas.width; x += 60) {
+        const y = 50 + Math.sin(x / 100) * 30 + 10;
+        const c = colors[Math.floor(Math.random() * colors.length)];
+        ctx.fillStyle = c;
+        ctx.shadowColor = c;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
     }
 
     $('toggleEffectBtn').onclick = () => {
@@ -553,7 +676,16 @@
         userUnsubscribe = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
-            currentUser = { uid: user.uid, username: data.username, avatar: data.avatar || `https://ui-avatars.com/api/?name=${data.username}&background=random`, banner: data.banner || '', bio: data.bio || '', isAdmin: user.email.split('@')[0] === ADMIN_EMAIL_PREFIX };
+            currentUser = { 
+              uid: user.uid, 
+              username: data.username, 
+              avatar: data.avatar || `https://ui-avatars.com/api/?name=${data.username}&background=random`, 
+              banner: data.banner || '', 
+              bio: data.bio || '', 
+              isAdmin: user.email.split('@')[0] === ADMIN_EMAIL_PREFIX,
+              favorites: data.favorites || []
+            };
+            currentFavorites = data.favorites || [];
             hideModal('setupModal', 'setupModalContainer');
             updateAuthUI(); 
             updateMembersList();
@@ -565,6 +697,7 @@
       } else {
         if (userUnsubscribe) userUnsubscribe();
         currentUser = null;
+        currentFavorites = [];
         hideModal('setupModal', 'setupModalContainer');
         updateAuthUI();
         updateMembersList();
@@ -585,7 +718,7 @@
           errorEl.innerText = 'Этот ник уже занят. Придумайте другой.';
           errorEl.classList.remove('hidden'); btn.innerText = 'Сохранить'; btn.disabled = false; return;
         }
-        await setDoc(doc(db, 'users', currentUser.uid), { username, avatar: `https://ui-avatars.com/api/?name=${username}&background=random`, banner: '', bio: '', createdAt: serverTimestamp() });
+        await setDoc(doc(db, 'users', currentUser.uid), { username, avatar: `https://ui-avatars.com/api/?name=${username}&background=random`, banner: '', bio: '', favorites: [], createdAt: serverTimestamp() });
         hideModal('setupModal', 'setupModalContainer');
       } catch (err) {
         errorEl.innerText = 'Ошибка БД: ' + err.message; errorEl.classList.remove('hidden');
@@ -599,8 +732,16 @@
         $('authBtn').classList.add('hidden'); $('profileBtn').classList.remove('hidden');
         $('headerUsername').innerText = currentUser.username; $('headerAvatar').src = currentUser.avatar;
         currentUser.isAdmin ? $('adminPanelBtn').classList.remove('hidden') : $('adminPanelBtn').classList.add('hidden');
+        
+        // Показываем кнопку избранного в шапке, если есть избранные видео
+        if (currentFavorites.length > 0) {
+          $('headerFavoritesBtn').classList.remove('hidden');
+        } else {
+          $('headerFavoritesBtn').classList.add('hidden');
+        }
       } else {
         $('authBtn').classList.remove('hidden'); $('profileBtn').classList.add('hidden'); $('adminPanelBtn').classList.add('hidden');
+        $('headerFavoritesBtn').classList.add('hidden');
       }
       lucide.createIcons();
     }
@@ -628,6 +769,15 @@
           if (currentUser.banner) { $('profileBannerBg').style.backgroundImage = `url(${currentUser.banner})`; $('profileBannerBg').style.backgroundSize = 'cover'; $('profileBannerBg').style.backgroundPosition = 'center'; }
           else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
           $('editProfileBlock').classList.remove('hidden'); $('logoutBtn').classList.remove('hidden'); $('editError').classList.add('hidden');
+          
+          // Загрузка избранного для своего профиля
+          if (currentFavorites.length > 0) {
+            $('profileFavoritesBlock').classList.remove('hidden');
+            await loadProfileFavorites(currentFavorites);
+          } else {
+            $('profileFavoritesBlock').classList.add('hidden');
+          }
+          
           await loadUserVideos(currentUser.username);
         } else {
           const q = query(collection(db, 'users'), where('username', '==', targetUsername));
@@ -639,6 +789,16 @@
           if (userData.banner) { $('profileBannerBg').style.backgroundImage = `url(${userData.banner})`; $('profileBannerBg').style.backgroundSize = 'cover'; $('profileBannerBg').style.backgroundPosition = 'center'; }
           else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
           $('editProfileBlock').classList.add('hidden'); $('logoutBtn').classList.add('hidden');
+          
+          // Загрузка избранного для чужого профиля
+          const userFavs = userData.favorites || [];
+          if (userFavs.length > 0) {
+            $('profileFavoritesBlock').classList.remove('hidden');
+            await loadProfileFavorites(userFavs);
+          } else {
+            $('profileFavoritesBlock').classList.add('hidden');
+          }
+          
           await loadUserVideos(userData.username);
         }
         showModal('profileModal', 'profileModalContainer');
@@ -717,6 +877,29 @@
         card.innerHTML = `<div class="relative aspect-video"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
         list.appendChild(card);
       });
+      lucide.createIcons();
+    }
+
+    async function loadProfileFavorites(favIds) {
+      const list = $('profileFavoritesList');
+      list.innerHTML = '';
+      if (favIds.length === 0) {
+        list.innerHTML = '<p class="text-xs text-gray-500 col-span-2">Пусто</p>';
+        return;
+      }
+      
+      for (const id of favIds) {
+        const docSnap = await getDoc(doc(db, 'videos', id));
+        if (docSnap.exists()) {
+          const v = docSnap.data();
+          const yt = extractYouTubeId(v.url);
+          const card = document.createElement('div');
+          card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group relative';
+          card.onclick = () => { hideModal('profileModal','profileModalContainer'); window.openVideoModal(id); };
+          card.innerHTML = `<div class="relative aspect-video"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
+          list.appendChild(card);
+        }
+      }
       lucide.createIcons();
     }
 
@@ -835,6 +1018,56 @@
         container.appendChild(row);
       });
       lucide.createIcons();
+    }
+
+    // --- Favorites logic ---
+    async function toggleFavorite() {
+      if (!currentUser) { showModal('authModal','authModalContainer'); return; }
+      if (!activeVideoId) return;
+
+      const btn = $('modalHeartBtn');
+      const isFav = currentFavorites.includes(activeVideoId);
+
+      if (isFav) {
+        // Удаляем
+        currentFavorites = currentFavorites.filter(id => id !== activeVideoId);
+        await updateDoc(doc(db, 'users', currentUser.uid), { favorites: arrayRemove(activeVideoId) });
+        btn.classList.remove('active');
+        $('heartBtnText').innerText = 'В избранное';
+      } else {
+        // Добавляем
+        currentFavorites.push(activeVideoId);
+        await updateDoc(doc(db, 'users', currentUser.uid), { favorites: arrayUnion(activeVideoId) });
+        btn.classList.add('active');
+        $('heartBtnText').innerText = 'В избранном';
+      }
+
+      updateAuthUI();
+    }
+
+    function openFavoritesModal() {
+      if (!currentUser) return;
+      const list = $('favoritesList');
+      list.innerHTML = '';
+
+      if (currentFavorites.length === 0) {
+        list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">У вас пока нет избранных видео.</p>';
+      } else {
+        currentFavorites.forEach(async (id) => {
+          const docSnap = await getDoc(doc(db, 'videos', id));
+          if (docSnap.exists()) {
+            const v = docSnap.data();
+            const yt = extractYouTubeId(v.url);
+            const card = document.createElement('div');
+            card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group relative';
+            card.onclick = () => { hideModal('favoritesModal','favoritesModalContainer'); window.openVideoModal(id); };
+            card.innerHTML = `<div class="relative aspect-video"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
+            list.appendChild(card);
+          }
+        });
+      }
+      lucide.createIcons();
+      showModal('favoritesModal', 'favoritesModalContainer');
     }
 
     // --- Data loading ---
@@ -1167,6 +1400,16 @@
         $('modalVideoYear').classList.add('hidden');
       }
 
+      // Настройка кнопки избранного
+      const heartBtn = $('modalHeartBtn');
+      if (currentUser && currentFavorites.includes(id)) {
+        heartBtn.classList.add('active');
+        $('heartBtnText').innerText = 'В избранном';
+      } else {
+        heartBtn.classList.remove('active');
+        $('heartBtnText').innerText = 'В избранное';
+      }
+
       if (currentUser && currentUser.isAdmin) {
         $('adminYearBlock').classList.remove('hidden');
         
@@ -1451,9 +1694,14 @@
       $('adminPanelBtn').onclick = () => { populateAdmin(); showModal('adminModal','adminModalContainer'); };
       $('closeAdminModal').onclick = () => hideModal('adminModal','adminModalContainer');
       $('closeVideoModal').onclick = closeVideoModal;
+      $('closeFavoritesModal').onclick = () => hideModal('favoritesModal','favoritesModalContainer');
       
       $('closeThreadModal').onclick = () => { hideModal('threadModal', 'threadModalContainer'); if(threadCommentsUnsubscribe) threadCommentsUnsubscribe(); };
       $('threadCommentForm').onsubmit = submitThreadComment;
+
+      // Избранное
+      $('headerFavoritesBtn').onclick = openFavoritesModal;
+      $('modalHeartBtn').onclick = toggleFavorite;
 
       // Переключение вкладок в админке
       $('tabVideo').onclick = () => { $('addVideoForm').classList.remove('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabVideo').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };

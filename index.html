@@ -931,7 +931,16 @@
         topContainer.innerHTML = '';
         sortedGames.forEach(([name, count], index) => {
           const row = document.createElement('div');
-          row.className = 'flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0';
+          row.className = 'flex items-center justify-between text-xs py-1.5 px-2 -mx-2 border-b border-white/5 last:border-0 cursor-pointer rounded-lg hover:bg-white/10 transition-colors';
+          row.title = `Открыть видео: ${name}`;
+          row.onclick = () => {
+            selectedGame = name;
+            selectedAuthor = 'Общие';
+            selectedYear = null;
+            currentView = 'videos';
+            renderCurrentView();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          };
           let medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `<span class="text-gray-500 w-4 inline-block text-center">${index + 1}</span>`;
           row.innerHTML = `<div class="flex items-center gap-2 text-gray-300"><span class="text-sm">${medal}</span><span class="truncate max-w-[120px]">${name}</span></div><span class="text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded-md">${count}</span>`;
           topContainer.appendChild(row);

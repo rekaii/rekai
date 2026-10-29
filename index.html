@@ -106,7 +106,9 @@
       display: flex;
       flex-direction: column;
       height: 85vh;
+      height: 85dvh;
       max-height: 85vh;
+      max-height: 85dvh;
       overflow: hidden;
     }
 
@@ -123,7 +125,7 @@
       grid-auto-rows: max-content; /* строки НИКОГДА не сжимаются — высота = высота карточки */
       padding-right: 0.5rem;
     }
-    @media (min-width: 640px) { #favoritesList { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 480px) { #favoritesList { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (min-width: 768px) { #favoritesList { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
     #favoritesList > p { grid-column: 1 / -1; }
@@ -151,6 +153,29 @@
       object-fit: cover;
     }
     .fav-card .fav-info { flex-shrink: 0; }
+
+    /* ===== МОБИЛЬНАЯ АДАПТАЦИЯ ===== */
+    html { -webkit-text-size-adjust: 100%; }
+    body { -webkit-tap-highlight-color: transparent; }
+    input, textarea { -webkit-user-select: text; user-select: text; }
+    .liquid-glass-interactive:active { transform: scale(0.97); }
+
+    /* на сенсорных экранах убираем "залипающий" hover-подъём */
+    @media (hover: none) {
+      .liquid-glass-interactive:hover { transform: none; }
+      .flower-node:hover { transform: none !important; }
+    }
+
+    @media (max-width: 640px) {
+      /* 16px, чтобы iOS не зумил страницу при фокусе на поле */
+      input:not([type="checkbox"]):not([type="file"]), select, textarea { font-size: 16px !important; }
+      /* лёгкий blur — плавнее на телефонах */
+      .liquid-glass, .liquid-glass-interactive {
+        backdrop-filter: blur(14px) saturate(160%);
+        -webkit-backdrop-filter: blur(14px) saturate(160%);
+      }
+      #favoritesList { gap: 0.75rem; }
+    }
   </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -158,8 +183,8 @@
   <canvas id="particleCanvas"></canvas>
 
   <!-- Экран авторизации (скрыт по умолчанию!) -->
-  <div id="authScreen" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-500">
-    <div class="liquid-glass p-10 rounded-3xl w-full max-w-md text-center">
+  <div id="authScreen" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-500 p-4">
+    <div class="liquid-glass p-6 sm:p-10 rounded-3xl w-full max-w-md text-center">
       <div class="mb-6 flex justify-center">
         <div class="w-20 h-20 rounded-full bg-indigo-500/20 flex items-center justify-center animate-pulse">
           <i data-lucide="lock" class="w-10 h-10 text-indigo-400"></i>
@@ -177,7 +202,7 @@
 
   <!-- Основной контент (скрыт, пока не авторизован) -->
   <div id="mainContent" class="hidden flex-col min-h-screen">
-    <div class="fixed left-6 top-32 z-40 flex flex-col gap-4 w-64 hidden lg:flex">
+    <div class="order-2 lg:order-none relative lg:fixed lg:left-6 lg:top-32 z-40 flex flex-col gap-4 w-auto lg:w-64 mx-4 lg:mx-0 mb-4 lg:mb-0">
       <div class="liquid-glass p-4 rounded-2xl flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="bg-indigo-500/20 p-2 rounded-lg">
@@ -203,27 +228,27 @@
       </div>
     </div>
 
-    <div id="membersContainer" class="fixed right-6 top-32 z-40 liquid-glass p-4 rounded-2xl w-64 hidden lg:block transform transition-all duration-300">
+    <div id="membersContainer" class="order-3 lg:order-none relative lg:fixed lg:right-6 lg:top-32 z-40 liquid-glass p-4 rounded-2xl w-auto lg:w-64 mx-4 lg:mx-0 mb-4 lg:mb-0 transform transition-all duration-300">
       <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
         <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i> Участники
       </h3>
       <div id="membersList" class="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1"></div>
     </div>
 
-    <button id="randomBtn" class="fixed bottom-6 right-6 z-40 liquid-glass-interactive p-4 rounded-full text-indigo-300 hover:text-white flex items-center justify-center group" title="Случайный откат">
+    <button id="randomBtn" class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 liquid-glass-interactive p-3 sm:p-4 rounded-full text-indigo-300 hover:text-white flex items-center justify-center group" title="Случайный откат">
       <i data-lucide="dices" class="w-7 h-7 group-hover:animate-bounce"></i>
     </button>
 
-    <header class="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between pointer-events-none">
-      <div class="flex items-center gap-4 pointer-events-auto">
+    <header class="fixed top-0 left-0 right-0 z-50 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between pointer-events-none">
+      <div class="flex items-center gap-2 sm:gap-4 pointer-events-auto">
         <button id="homeBtn" class="liquid-glass-interactive px-4 py-2 rounded-full flex items-center gap-2 text-sm font-medium">
           <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span> rekai
         </button>
-        <div class="liquid-glass px-4 py-2 rounded-full text-xs font-light text-gray-300">
+        <div class="hidden sm:block liquid-glass px-4 py-2 rounded-full text-xs font-light text-gray-300">
           группе <span id="daysCounter" class="font-semibold text-white">0</span> дней
         </div>
       </div>
-      <div class="flex items-center gap-3 pointer-events-auto">
+      <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto">
         <button id="headerFavoritesBtn" class="hidden liquid-glass-interactive p-2.5 rounded-full text-red-400 hover:text-red-300" title="Мое избранное">
           <i data-lucide="heart" class="w-5 h-5 fill-current"></i>
         </button>
@@ -231,26 +256,26 @@
           <i data-lucide="sparkles" class="w-5 h-5"></i>
         </button>
         
-        <button id="adminPanelBtn" class="hidden liquid-glass-interactive px-4 py-2 rounded-full text-sm flex items-center gap-2 hover:text-indigo-300">
-          <i data-lucide="settings" class="w-4 h-4"></i><span>Панель управления</span>
+        <button id="adminPanelBtn" title="Панель управления" class="hidden liquid-glass-interactive px-3 sm:px-4 py-2.5 sm:py-2 rounded-full text-sm flex items-center gap-2 hover:text-indigo-300">
+          <i data-lucide="settings" class="w-4 h-4"></i><span class="hidden sm:inline">Панель управления</span>
         </button>
         <button id="authBtn" class="hidden liquid-glass-interactive px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2">
           <i data-lucide="user" class="w-4 h-4"></i><span>Войти</span>
         </button>
-        <button id="profileBtn" class="hidden liquid-glass-interactive pl-1 pr-4 py-1 rounded-full text-sm font-medium flex items-center gap-2">
+        <button id="profileBtn" class="hidden liquid-glass-interactive pl-1 pr-1 sm:pr-4 py-1 rounded-full text-sm font-medium flex items-center gap-0 sm:gap-2">
           <img id="headerAvatar" src="" class="w-7 h-7 rounded-full object-cover bg-gray-700">
-          <span id="headerUsername">Профиль</span>
+          <span id="headerUsername" class="hidden sm:inline">Профиль</span>
         </button>
       </div>
     </header>
 
-    <main id="app" class="flex-grow flex items-center justify-center relative pt-20 pb-12 px-4 z-10"></main>
+    <main id="app" class="order-1 lg:flex-grow flex items-center justify-center relative pt-20 pb-8 lg:pb-12 px-4 z-10"></main>
 
-    <footer class="py-4 text-center text-xs text-gray-500 font-light relative z-10">&copy; 2023-2026 rekai. Все права защищены.</footer>
+    <footer class="order-4 pt-4 pb-20 lg:pb-4 text-center text-xs text-gray-500 font-light relative z-10"><p class="sm:hidden mb-1">группе <span id="daysCounterMobile" class="text-gray-300 font-medium">0</span> дней</p>&copy; 2023-2026 rekai. Все права защищены.</footer>
   </div>
 
   <!-- Auth Modal -->
-  <div id="authModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+  <div id="authModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
     <div class="liquid-glass p-8 rounded-3xl w-full max-w-sm relative transform scale-95 transition-transform duration-300" id="authModalContainer">
       <button id="closeAuthModal" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       <h3 class="text-xl font-medium mb-6 text-center text-white">Авторизация</h3>
@@ -263,7 +288,7 @@
   </div>
 
   <!-- Setup Modal (Первый вход) -->
-  <div id="setupModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+  <div id="setupModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
     <div class="liquid-glass p-8 rounded-3xl w-full max-w-sm relative transform scale-95 transition-transform duration-300" id="setupModalContainer">
       <h3 class="text-xl font-medium mb-2 text-center text-white">Добро пожаловать!</h3>
       <p class="text-xs text-gray-400 text-center mb-6">Придумайте свой никнейм для сайта</p>
@@ -280,7 +305,7 @@
 
   <!-- Profile Modal -->
   <div id="profileModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
-    <div class="liquid-glass rounded-3xl w-full max-w-3xl relative max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300" id="profileModalContainer">
+    <div class="liquid-glass rounded-3xl w-full max-w-3xl relative max-h-[92dvh] overflow-y-auto transform scale-95 transition-transform duration-300" id="profileModalContainer">
       <div class="relative w-full h-40 md:h-56">
         <div id="profileBannerBg" class="absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl" style="mask-image: linear-gradient(to bottom, black 50%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);"></div>
         <button id="closeProfileModal" class="absolute top-4 right-4 z-20 text-gray-400 hover:text-white bg-black/40 rounded-full p-2 backdrop-blur-md"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -325,7 +350,7 @@
 
   <!-- Модальное окно для обсуждения (Ветки) -->
   <div id="threadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
-    <div class="liquid-glass p-6 md:p-8 rounded-3xl w-full max-w-2xl relative max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="threadModalContainer">
+    <div class="liquid-glass p-6 md:p-8 rounded-3xl w-full max-w-2xl relative max-h-[92dvh] flex flex-col transform scale-95 transition-transform duration-300" id="threadModalContainer">
       <button id="closeThreadModal" class="absolute top-4 right-4 text-gray-400 hover:text-white z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
       <h3 class="text-lg font-medium mb-4 text-white flex items-center gap-2"><i data-lucide="message-circle" class="w-5 h-5 text-indigo-400"></i> Обсуждение</h3>
       <div id="threadCommentsList" class="flex-grow overflow-y-auto space-y-4 pr-2 mb-4"></div>
@@ -343,8 +368,8 @@
   </div>
 
   <!-- Admin Modal -->
-  <div id="adminModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-    <div class="liquid-glass p-8 rounded-3xl w-full max-w-md relative max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300" id="adminModalContainer">
+  <div id="adminModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-3 sm:p-4">
+    <div class="liquid-glass p-5 sm:p-8 rounded-3xl w-full max-w-md relative max-h-[92dvh] overflow-y-auto transform scale-95 transition-transform duration-300" id="adminModalContainer">
       <button id="closeAdminModal" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       
       <div class="flex border-b border-white/10 mb-6 pb-2 gap-2 text-xs sm:text-sm font-medium overflow-x-auto whitespace-nowrap">
@@ -439,15 +464,15 @@
   </div>
 
   <!-- Video Modal -->
-  <div id="videoModal" class="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4 md:p-8">
-    <div class="liquid-glass rounded-3xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col relative transform scale-95 transition-transform duration-300" id="videoModalContainer">
+  <div id="videoModal" class="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-2 sm:p-4 md:p-8">
+    <div class="liquid-glass rounded-3xl w-full max-w-6xl max-h-[96dvh] sm:max-h-[92dvh] overflow-hidden flex flex-col relative transform scale-95 transition-transform duration-300" id="videoModalContainer">
       <button id="closeVideoModal" class="absolute top-4 right-4 z-20 text-gray-400 hover:text-white bg-black/40 rounded-full p-2"><i data-lucide="x" class="w-5 h-5"></i></button>
       <div class="grid grid-cols-1 lg:grid-cols-3 h-full overflow-y-auto lg:overflow-hidden">
-        <div class="lg:col-span-2 p-6 flex flex-col justify-between bg-black/20 border-b lg:border-b-0 lg:border-r border-white/10">
+        <div class="lg:col-span-2 p-4 pt-14 sm:p-6 flex flex-col justify-between bg-black/20 border-b lg:border-b-0 lg:border-r border-white/10">
           <div>
             <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl bg-black aspect-video"><iframe id="modalIframe" class="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
             <h2 id="modalVideoTitle" class="text-xl font-semibold mt-4 text-white"></h2>
-            <div class="flex items-center justify-between text-xs text-gray-400 mt-2">
+            <div class="flex items-center justify-between flex-wrap gap-2 text-xs text-gray-400 mt-2">
               <span id="modalVideoAuthor"></span>
               <div class="flex items-center gap-2">
                 <span id="modalVideoYear" class="bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full hidden"></span>
@@ -476,7 +501,7 @@
           </div>
 
         </div>
-        <div class="p-6 flex flex-col h-[500px] lg:h-full bg-white/5">
+        <div class="p-4 sm:p-6 flex flex-col h-[460px] lg:h-full bg-white/5">
           <h3 class="text-lg font-medium mb-4 flex items-center gap-2"><i data-lucide="message-square" class="w-5 h-5 text-indigo-400"></i> Комментарии</h3>
           <div id="commentsList" class="flex-grow overflow-y-auto space-y-4 pr-2 mb-4"></div>
           <div class="pt-3 border-t border-white/10">
@@ -542,7 +567,7 @@
 
     const $ = id => document.getElementById(id);
     const extractYouTubeId = url => { const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/); return (m && m[2].length === 11) ? m[2] : null; };
-    const calculateDays = () => { const d = Math.floor(Math.abs(new Date() - START_DATE)/(1000*60*60*24)); $('daysCounter').innerText = d; };
+    const calculateDays = () => { const d = Math.floor(Math.abs(new Date() - START_DATE)/(1000*60*60*24)); $('daysCounter').innerText = d; $('daysCounterMobile').innerText = d; };
 
     // --- Управление URL (deep links) ---
     function getVideoIdFromHash() {
@@ -1166,7 +1191,34 @@
       lucide.createIcons();
     }
 
+    const MOBILE_BREAKPOINT = 700;
+
+    // На узких экранах вместо «цветка» с перетаскиванием показываем аккуратную сетку кнопок
+    function renderMobileList(items, onSelect, centerTitle, centerSubtitle) {
+      const app = $('app');
+      const wrap = document.createElement('div');
+      wrap.className = 'w-full max-w-md mx-auto fade-enter flex flex-col items-center';
+      const subtitleHtml = centerSubtitle ? `<p class="text-sm font-light text-gray-400 mt-2 text-center">${centerSubtitle}</p>` : '';
+      const backHtml = currentView !== 'games'
+        ? '<button id="backToGamesBtn" class="mt-4 text-xs text-indigo-400 hover:text-indigo-300 bg-white/5 px-4 py-2 rounded-full border border-white/10 flex items-center gap-1"><i data-lucide="arrow-left" class="w-3 h-3"></i> Назад</button>'
+        : '';
+      wrap.innerHTML = `<h1 class="text-4xl font-bold tracking-tight text-center break-words bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400 drop-shadow-sm">${centerTitle}</h1>${subtitleHtml}${backHtml}`;
+      const grid = document.createElement('div');
+      grid.className = 'grid grid-cols-2 gap-3 w-full mt-6';
+      items.forEach(item => {
+        const b = document.createElement('button');
+        b.className = 'liquid-glass-interactive rounded-2xl px-3 py-4 min-h-[68px] text-sm font-medium text-center break-words';
+        b.textContent = item;
+        b.onclick = () => onSelect(item);
+        grid.appendChild(b);
+      });
+      wrap.appendChild(grid);
+      app.appendChild(wrap);
+      if ($('backToGamesBtn')) $('backToGamesBtn').onclick = () => { currentView = 'games'; renderCurrentView(); };
+    }
+
     function renderFlower(items, onSelect, centerTitle, centerSubtitle) {
+      if (window.innerWidth < MOBILE_BREAKPOINT) { renderMobileList(items, onSelect, centerTitle, centerSubtitle); return; }
       const app = $('app');
       const container = document.createElement('div');
       container.className = 'relative w-[650px] h-[650px] max-w-full flex items-center justify-center fade-enter';
@@ -1199,6 +1251,7 @@
       app.appendChild(container);
       if ($('backToGamesBtn')) $('backToGamesBtn').onclick = () => { currentView = 'games'; renderCurrentView(); };
       (function physics() {
+        if (!container.isConnected) return;
         const k = 0.015; const damping = 0.92; const safeZoneRadius = 160; 
         nodesData.forEach(n => {
           const fx = (n.baseX - n.x) * k; const fy = (n.baseY - n.y) * k;
@@ -1615,6 +1668,15 @@
       $('commentForm').onsubmit = submitComment;
       $('cancelReply').onclick = () => { $('replyingToIndicator').classList.add('hidden'); activeParentId = null; };
       $('homeBtn').onclick = () => { currentView = 'games'; renderCurrentView(); };
+
+      let lastIsMobile = window.innerWidth < MOBILE_BREAKPOINT;
+      window.addEventListener('resize', () => {
+        const nowMobile = window.innerWidth < MOBILE_BREAKPOINT;
+        if (nowMobile !== lastIsMobile) {
+          lastIsMobile = nowMobile;
+          if (currentView === 'games' || currentView === 'authors') renderCurrentView();
+        }
+      });
       lucide.createIcons();
     });
   </script>

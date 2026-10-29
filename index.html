@@ -101,24 +101,56 @@
     .heart-btn.active svg { fill: #ef4444; stroke: #ef4444; transform: scale(1.2); }
     .heart-btn:active svg { transform: scale(0.8); }
 
-    /* Жёсткий фикс сжатия видео в сетке */
+    /* ===== ИСПРАВЛЕНИЕ: окно избранного ===== */
+    #favoritesModalContainer {
+      display: flex;
+      flex-direction: column;
+      height: 85vh;
+      max-height: 85vh;
+      overflow: hidden;
+    }
+
+    /* Область со списком: занимает всё оставшееся место и прокручивается */
+    #favoritesList {
+      display: grid;
+      grid-template-columns: repeat(1, minmax(0, 1fr));
+      gap: 1rem;
+      flex: 1 1 0;
+      min-height: 0;          /* без этого flex-ребёнок не даёт скролл и сжимает содержимое */
+      overflow-y: auto;
+      overflow-x: hidden;
+      align-content: start;
+      grid-auto-rows: max-content; /* строки НИКОГДА не сжимаются — высота = высота карточки */
+      padding-right: 0.5rem;
+    }
+    @media (min-width: 640px) { #favoritesList { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 768px) { #favoritesList { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+    #favoritesList > p { grid-column: 1 / -1; }
+
     .fav-card {
       display: flex;
       flex-direction: column;
       width: 100%;
+      height: auto;
+      min-height: max-content; /* карточка не сжимается */
+      flex-shrink: 0;
     }
     .fav-card .fav-img-wrap {
       position: relative;
       width: 100%;
-      aspect-ratio: 16 / 9; /* Жестко задаем пропорции 16:9 */
-      flex-shrink: 0;       /* Запрещаем сжимать картинку */
+      aspect-ratio: 16 / 9;
+      flex-shrink: 0;
+      overflow: hidden;
+      background: #000;
     }
     .fav-card .fav-img-wrap img {
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      object-fit: cover;    /* Заполняем блок без искажений */
+      object-fit: cover;
     }
+    .fav-card .fav-info { flex-shrink: 0; }
   </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -392,17 +424,17 @@
 
   <!-- Favorites Modal -->
   <div id="favoritesModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[80] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
-    <div class="liquid-glass p-6 md:p-8 rounded-3xl w-full max-w-4xl relative flex flex-col transform scale-95 transition-transform duration-300" id="favoritesModalContainer" style="height: 85vh; max-height: 85vh;">
+    <div class="liquid-glass p-6 md:p-8 rounded-3xl w-full max-w-4xl relative transform scale-95 transition-transform duration-300" id="favoritesModalContainer">
       <button id="closeFavoritesModal" class="absolute top-4 right-4 text-gray-400 hover:text-white z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 flex-shrink-0">
         <h3 class="text-lg font-medium text-white flex items-center gap-2"><i data-lucide="heart" class="w-5 h-5 text-red-500 fill-current"></i> Избранное</h3>
-        <div class="relative w-full sm:w-64">
+        <div class="relative w-full sm:w-64 sm:mr-8">
           <select id="favoritesUserSelect" class="w-full liquid-glass-interactive appearance-none bg-white/5 border border-white/10 rounded-full px-4 py-2 pr-10 text-sm text-white focus:outline-none cursor-pointer">
           </select>
           <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
         </div>
       </div>
-      <div id="favoritesList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto pr-2 flex-grow" style="align-content: start;"></div>
+      <div id="favoritesList"></div>
     </div>
   </div>
 
@@ -1005,6 +1037,7 @@
     async function loadFavoritesForUser(uid) {
       const list = $('favoritesList');
       list.innerHTML = '';
+      list.scrollTop = 0;
       let favIds = [];
       if (uid === currentUser?.uid) {
         favIds = currentFavorites;
@@ -1014,24 +1047,26 @@
       }
       if (favIds.length === 0) {
         if (uid === currentUser?.uid) {
-          list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">Вы еще не добавили ни одного видео в избранное.</p>';
+          list.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">Вы еще не добавили ни одного видео в избранное.</p>';
         } else {
-          list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">У этого пользователя пока нет избранных видео.</p>';
+          list.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">У этого пользователя пока нет избранных видео.</p>';
         }
         return;
       }
-      for (const id of favIds) {
-        const docSnap = await getDoc(doc(db, 'videos', id));
-        if (docSnap.exists()) {
-          const v = docSnap.data(); const yt = extractYouTubeId(v.url);
-          const card = document.createElement('div');
-          // Используем НАШИ кастомные классы fav-card и fav-img-wrap
-          card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group fav-card';
-          card.onclick = () => { hideModal('favoritesModal','favoritesModalContainer'); window.openVideoModal(id); };
-          card.innerHTML = `<div class="fav-img-wrap"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" alt=""><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1">${(v.games||[]).join(', ')}</p></div>`;
-          list.appendChild(card);
-        }
-      }
+      // Загружаем все видео параллельно, порядок сохраняется
+      const snaps = await Promise.all(favIds.map(id => getDoc(doc(db, 'videos', id))));
+      const frag = document.createDocumentFragment();
+      snaps.forEach((docSnap, i) => {
+        if (!docSnap.exists()) return;
+        const id = favIds[i];
+        const v = docSnap.data(); const yt = extractYouTubeId(v.url);
+        const card = document.createElement('div');
+        card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group fav-card';
+        card.onclick = () => { hideModal('favoritesModal','favoritesModalContainer'); window.openVideoModal(id); };
+        card.innerHTML = `<div class="fav-img-wrap"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" alt="" loading="lazy"><div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-8 h-8 text-white fill-white"></i></div></div><div class="p-3 fav-info"><h4 class="text-xs font-medium text-white line-clamp-1">${v.title}</h4><p class="text-[10px] text-gray-400 mt-1 line-clamp-1">${(v.games||[]).join(', ')}</p></div>`;
+        frag.appendChild(card);
+      });
+      list.appendChild(frag);
       lucide.createIcons();
     }
 
@@ -1043,7 +1078,7 @@
       if (selectedFavoritesUserUid) {
         await loadFavoritesForUser(selectedFavoritesUserUid);
       } else {
-        $('favoritesList').innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">Нет доступных избранных видео.</p>';
+        $('favoritesList').innerHTML = '<p class="text-sm text-gray-500 text-center py-8">Нет доступных избранных видео.</p>';
       }
       showModal('favoritesModal', 'favoritesModalContainer');
     }
@@ -1551,7 +1586,7 @@
         favoritesUserSelect.addEventListener('change', async (e) => {
           selectedFavoritesUserUid = e.target.value;
           if (selectedFavoritesUserUid) await loadFavoritesForUser(selectedFavoritesUserUid);
-          else $('favoritesList').innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">Выберите пользователя.</p>';
+          else $('favoritesList').innerHTML = '<p class="text-sm text-gray-500 text-center py-8">Выберите пользователя.</p>';
         });
       }
 

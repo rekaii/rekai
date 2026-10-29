@@ -154,7 +154,6 @@
       </div>
     </div>
     <div class="flex items-center gap-3 pointer-events-auto">
-      <!-- Кнопка избранного в шапке (теперь показывается всегда для авторизованных) -->
       <button id="headerFavoritesBtn" class="hidden liquid-glass-interactive p-2.5 rounded-full text-red-400 hover:text-red-300" title="Мое избранное">
         <i data-lucide="heart" class="w-5 h-5 fill-current"></i>
       </button>
@@ -243,7 +242,6 @@
               <h3 class="text-sm font-medium mb-3 text-white flex items-center gap-2"><i data-lucide="video" class="w-4 h-4 text-indigo-400"></i> Автор откатов:</h3>
               <div id="profileVideosList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
             </div>
-            <!-- Блок с избранным в профиле -->
             <div id="profileFavoritesBlock" class="hidden">
               <h3 class="text-sm font-medium mb-3 text-red-400 flex items-center gap-2"><i data-lucide="heart" class="w-4 h-4 fill-current"></i> Избранное:</h3>
               <div id="profileFavoritesList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
@@ -361,7 +359,6 @@
         <h3 class="text-lg font-medium text-white flex items-center gap-2"><i data-lucide="heart" class="w-5 h-5 text-red-500 fill-current"></i> Избранное</h3>
         <div class="relative w-full sm:w-64">
           <select id="favoritesUserSelect" class="w-full liquid-glass-interactive appearance-none bg-white/5 border border-white/10 rounded-full px-4 py-2 pr-10 text-sm text-white focus:outline-none cursor-pointer">
-            <!-- Заполняется динамически -->
           </select>
           <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
         </div>
@@ -388,10 +385,15 @@
             </div>
           </div>
           
-          <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
-            <button id="modalHeartBtn" class="heart-btn flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm font-medium">
-              <i data-lucide="heart" class="w-5 h-5"></i> <span id="heartBtnText">В избранное</span>
-            </button>
+          <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-2">
+              <button id="modalHeartBtn" class="heart-btn flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm font-medium">
+                <i data-lucide="heart" class="w-5 h-5"></i> <span id="heartBtnText">В избранное</span>
+              </button>
+              <button id="copyLinkBtn" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm font-medium text-gray-300" title="Скопировать ссылку на видео">
+                <i data-lucide="link" class="w-5 h-5"></i> <span>Копировать ссылку</span>
+              </button>
+            </div>
             <div id="adminYearBlock" class="hidden">
               <label class="block text-[10px] text-gray-400 mb-2 uppercase tracking-wider">Изменить год видео (Только для админа)</label>
               <div class="flex items-center gap-2">
@@ -465,13 +467,39 @@
     let currentFavorites = [];
     let profileFavorites = [];
 
-    // Для выбора пользователя в избранном
-    let favoritesUsers = [];          // список { uid, username, avatar }
-    let selectedFavoritesUserUid = null; // null означает "моё избранное"
+    let favoritesUsers = [];
+    let selectedFavoritesUserUid = null;
+
+    // Флаг, чтобы не открывать видео дважды при первичной загрузке
+    let pendingVideoIdFromHash = null;
 
     const $ = id => document.getElementById(id);
     const extractYouTubeId = url => { const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/); return (m && m[2].length === 11) ? m[2] : null; };
     const calculateDays = () => { const d = Math.floor(Math.abs(new Date() - START_DATE)/(1000*60*60*24)); $('daysCounter').innerText = d; };
+
+    // --- Управление URL (deep links) ---
+    // Формат: #video=VIDEO_ID
+    function getVideoIdFromHash() {
+      const hash = window.location.hash;
+      if (!hash) return null;
+      const match = hash.match(/#video=([^&]+)/);
+      return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    function setVideoHash(videoId) {
+      if (videoId) {
+        // Используем history.replaceState, чтобы не плодить записи в истории
+        history.replaceState(null, '', `#video=${encodeURIComponent(videoId)}`);
+      } else {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    }
+
+    function clearVideoHash() {
+      if (window.location.hash.startsWith('#video=')) {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    }
 
     // --- Генерация звука ---
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -519,47 +547,24 @@
 
     function getAutoParticleMode() {
       const now = new Date();
-      const month = now.getMonth(); // 0-11
+      const month = now.getMonth();
       const date = now.getDate();
 
-      // 27 декабря - 3 января (Гирлянда + снег)
-      if ((month === 11 && date >= 27) || (month === 0 && date <= 3)) {
-        return 'garland_snow';
-      }
-      // 14 февраля (Сердечки)
-      if (month === 1 && date === 14) {
-        return 'hearts';
-      }
-      // Дни рождения (Хлопушки)
+      if ((month === 11 && date >= 27) || (month === 0 && date <= 3)) return 'garland_snow';
+      if (month === 1 && date === 14) return 'hearts';
       const bdays = [
-        { m: 11, d: 15 }, // 15 декабря
-        { m: 4, d: 27 },  // 27 мая
-        { m: 5, d: 22 },  // 22 июня
-        { m: 7, d: 29 },  // 29 августа
-        { m: 10, d: 1 },  // 1 ноября
-        { m: 6, d: 31 },  // 31 июля
-        { m: 1, d: 2 },   // 2 февраля
-        { m: 0, d: 30 }   // 30 января
+        { m: 11, d: 15 }, { m: 4, d: 27 }, { m: 5, d: 22 }, { m: 7, d: 29 },
+        { m: 10, d: 1 }, { m: 6, d: 31 }, { m: 1, d: 2 }, { m: 0, d: 30 }
       ];
-      for (let b of bdays) {
-        if (month === b.m && date === b.d) return 'confetti';
-      }
-
-      // Осень (Сентябрь - Ноябрь)
+      for (let b of bdays) { if (month === b.m && date === b.d) return 'confetti'; }
       if (month >= 8 && month <= 10) return 'leaves';
-      // Зима (Декабрь - Февраль, кроме НГ и 14 фев)
       if (month === 11 || month === 0 || month === 1) return 'snow';
-
       return 'none';
     }
 
     function updateParticleMode() {
       let modeToUse = globalEffectMode;
-
-      if (modeToUse === 'auto') {
-        modeToUse = getAutoParticleMode();
-      }
-
+      if (modeToUse === 'auto') modeToUse = getAutoParticleMode();
       particleMode = modeToUse;
 
       if (particleMode === 'none' || !effectsEnabled) {
@@ -605,11 +610,7 @@
     function animateParticles() {
       if (!effectsEnabled || particleMode === 'none') return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Рисуем гирлянду на фоне (если включен режим garland_snow)
-      if (particleMode === 'garland_snow') {
-        drawGarland();
-      }
+      if (particleMode === 'garland_snow') drawGarland();
       
       particles.forEach((p) => {
         if (p.type === 'snow') {
@@ -659,7 +660,6 @@
       }
       ctx.stroke();
 
-      // Лампочки
       const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'];
       for (let x = 20; x < canvas.width; x += 60) {
         const y = 50 + Math.sin(x / 100) * 30 + 10;
@@ -744,8 +744,6 @@
         $('authBtn').classList.add('hidden'); $('profileBtn').classList.remove('hidden');
         $('headerUsername').innerText = currentUser.username; $('headerAvatar').src = currentUser.avatar;
         currentUser.isAdmin ? $('adminPanelBtn').classList.remove('hidden') : $('adminPanelBtn').classList.add('hidden');
-        
-        // Показываем кнопку избранного в шапке ВСЕГДА для авторизованных
         $('headerFavoritesBtn').classList.remove('hidden');
       } else {
         $('authBtn').classList.remove('hidden'); $('profileBtn').classList.add('hidden'); $('adminPanelBtn').classList.add('hidden');
@@ -778,14 +776,12 @@
           else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
           $('editProfileBlock').classList.remove('hidden'); $('logoutBtn').classList.remove('hidden'); $('editError').classList.add('hidden');
           
-          // Загрузка избранного для своего профиля
           if (currentFavorites.length > 0) {
             $('profileFavoritesBlock').classList.remove('hidden');
             await loadProfileFavorites(currentFavorites);
           } else {
             $('profileFavoritesBlock').classList.add('hidden');
           }
-          
           await loadUserVideos(currentUser.username);
         } else {
           const q = query(collection(db, 'users'), where('username', '==', targetUsername));
@@ -798,7 +794,6 @@
           else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
           $('editProfileBlock').classList.add('hidden'); $('logoutBtn').classList.add('hidden');
           
-          // Загрузка избранного для чужого профиля
           const userFavs = userData.favorites || [];
           if (userFavs.length > 0) {
             $('profileFavoritesBlock').classList.remove('hidden');
@@ -806,7 +801,6 @@
           } else {
             $('profileFavoritesBlock').classList.add('hidden');
           }
-          
           await loadUserVideos(userData.username);
         }
         showModal('profileModal', 'profileModalContainer');
@@ -911,13 +905,12 @@
       lucide.createIcons();
     }
 
-    // --- Дашборд (Слева) ---
+    // --- Дашборд ---
     function updateDashboard() {
       $('totalVideosCount').innerText = videos.length;
 
       const gameStats = {};
       games.forEach(g => gameStats[g] = 0);
-      
       videos.forEach(v => {
         if (v.games && Array.isArray(v.games)) {
           v.games.forEach(g => {
@@ -940,31 +933,14 @@
         sortedGames.forEach(([name, count], index) => {
           const row = document.createElement('div');
           row.className = 'flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0';
-          
-          let medal = '';
-          if (index === 0) medal = '🥇';
-          else if (index === 1) medal = '🥈';
-          else if (index === 2) medal = '🥉';
-          else medal = `<span class="text-gray-500 w-4 inline-block text-center">${index + 1}</span>`;
-
-          row.innerHTML = `
-            <div class="flex items-center gap-2 text-gray-300">
-              <span class="text-sm">${medal}</span>
-              <span class="truncate max-w-[120px]">${name}</span>
-            </div>
-            <span class="text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded-md">${count}</span>
-          `;
+          let medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `<span class="text-gray-500 w-4 inline-block text-center">${index + 1}</span>`;
+          row.innerHTML = `<div class="flex items-center gap-2 text-gray-300"><span class="text-sm">${medal}</span><span class="truncate max-w-[120px]">${name}</span></div><span class="text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded-md">${count}</span>`;
           topContainer.appendChild(row);
         });
       }
 
       const recentContainer = $('recentVideosList');
-      const sortedByDate = [...videos].sort((a, b) => {
-        const dateA = a.createdAt?.toMillis() || 0;
-        const dateB = b.createdAt?.toMillis() || 0;
-        return dateB - dateA;
-      }).slice(0, 3);
-
+      const sortedByDate = [...videos].sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)).slice(0, 3);
       if (sortedByDate.length === 0) {
         recentContainer.innerHTML = '<p class="text-xs text-gray-500">Пока нет видео</p>';
       } else {
@@ -974,18 +950,7 @@
           const card = document.createElement('div');
           card.className = 'flex gap-2 cursor-pointer group hover:bg-white/5 p-1 rounded-lg transition-colors';
           card.onclick = () => window.openVideoModal(v.id);
-          card.innerHTML = `
-            <div class="relative w-16 h-10 rounded-md overflow-hidden flex-shrink-0 bg-black">
-              <img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
-              <div class="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                <i data-lucide="play" class="w-3 h-3 text-white fill-white"></i>
-              </div>
-            </div>
-            <div class="flex flex-col justify-center overflow-hidden">
-              <h4 class="text-[10px] font-medium text-white truncate">${v.title}</h4>
-              <p class="text-[9px] text-gray-500 truncate">${v.author}</p>
-            </div>
-          `;
+          card.innerHTML = `<div class="relative w-16 h-10 rounded-md overflow-hidden flex-shrink-0 bg-black"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover group-hover:scale-110 transition-transform"><div class="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="play" class="w-3 h-3 text-white fill-white"></i></div></div><div class="flex flex-col justify-center overflow-hidden"><h4 class="text-[10px] font-medium text-white truncate">${v.title}</h4><p class="text-[9px] text-gray-500 truncate">${v.author}</p></div>`;
           recentContainer.appendChild(card);
         });
         lucide.createIcons();
@@ -995,34 +960,16 @@
     function updateMembersList() {
       const container = $('membersList');
       if (!container) return;
-      
-      if (members.length === 0) {
-        container.innerHTML = '<p class="text-xs text-gray-500">Пока нет участников</p>';
-        return;
-      }
-
+      if (members.length === 0) { container.innerHTML = '<p class="text-xs text-gray-500">Пока нет участников</p>'; return; }
       container.innerHTML = '';
       members.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
-
       members.forEach(m => {
         const row = document.createElement('div');
         row.className = 'flex items-center justify-between text-xs py-2 border-b border-white/5 last:border-0 hover:bg-white/5 rounded-lg px-2 transition-colors cursor-pointer group';
-        row.onclick = (e) => { 
-            if (e.target.closest('.delete-member-btn')) return;
-            window.openProfile(m.username); 
-        };
-        
+        row.onclick = (e) => { if (e.target.closest('.delete-member-btn')) return; window.openProfile(m.username); };
         const deleteBtn = (currentUser && currentUser.isAdmin) 
-            ? `<button onclick="event.stopPropagation(); window.removeMember('${m.id}')" class="delete-member-btn text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity p-1"><i data-lucide="x" class="w-3 h-3"></i></button>` 
-            : '';
-
-        row.innerHTML = `
-          <div class="flex items-center gap-2 text-gray-300">
-            <img src="${m.avatar || 'https://via.placeholder.com/20'}" class="w-5 h-5 rounded-full object-cover bg-gray-700">
-            <span class="truncate max-w-[120px]">${m.username}</span>
-          </div>
-          ${deleteBtn}
-        `;
+          ? `<button onclick="event.stopPropagation(); window.removeMember('${m.id}')" class="delete-member-btn text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity p-1"><i data-lucide="x" class="w-3 h-3"></i></button>` : '';
+        row.innerHTML = `<div class="flex items-center gap-2 text-gray-300"><img src="${m.avatar || 'https://via.placeholder.com/20'}" class="w-5 h-5 rounded-full object-cover bg-gray-700"><span class="truncate max-w-[120px]">${m.username}</span></div>${deleteBtn}`;
         container.appendChild(row);
       });
       lucide.createIcons();
@@ -1032,28 +979,22 @@
     async function toggleFavorite() {
       if (!currentUser) { showModal('authModal','authModalContainer'); return; }
       if (!activeVideoId) return;
-
       const btn = $('modalHeartBtn');
       const isFav = currentFavorites.includes(activeVideoId);
-
       if (isFav) {
-        // Удаляем
         currentFavorites = currentFavorites.filter(id => id !== activeVideoId);
         await updateDoc(doc(db, 'users', currentUser.uid), { favorites: arrayRemove(activeVideoId) });
         btn.classList.remove('active');
         $('heartBtnText').innerText = 'В избранное';
       } else {
-        // Добавляем
         currentFavorites.push(activeVideoId);
         await updateDoc(doc(db, 'users', currentUser.uid), { favorites: arrayUnion(activeVideoId) });
         btn.classList.add('active');
         $('heartBtnText').innerText = 'В избранном';
       }
-
       updateAuthUI();
     }
 
-    // Загрузка списка пользователей, у которых есть избранное
     async function loadFavoritesUsers() {
       const usersWithFavorites = [];
       const q = query(collection(db, 'users'));
@@ -1061,51 +1002,36 @@
       snap.forEach(docSnap => {
         const data = docSnap.data();
         if (data.favorites && data.favorites.length > 0) {
-          usersWithFavorites.push({
-            uid: docSnap.id,
-            username: data.username,
-            avatar: data.avatar || `https://ui-avatars.com/api/?name=${data.username}&background=random`
-          });
+          usersWithFavorites.push({ uid: docSnap.id, username: data.username, avatar: data.avatar || `https://ui-avatars.com/api/?name=${data.username}&background=random` });
         }
       });
       favoritesUsers = usersWithFavorites;
       return favoritesUsers;
     }
 
-    // Обновление селекта пользователей в модалке избранного
     function populateFavoritesUserSelect() {
       const select = $('favoritesUserSelect');
       if (!select) return;
-      
-      // Очищаем
       select.innerHTML = '';
-      
-      // Добавляем текущего пользователя, если он есть (всегда, даже если избранное пустое)
       if (currentUser) {
         const option = document.createElement('option');
         option.value = currentUser.uid;
         option.textContent = `Моё избранное (${currentUser.username})`;
         select.appendChild(option);
       }
-      
-      // Добавляем остальных пользователей (кроме текущего), у которых есть избранное
       favoritesUsers.forEach(u => {
-        if (currentUser && u.uid === currentUser.uid) return; // уже добавили
+        if (currentUser && u.uid === currentUser.uid) return;
         const option = document.createElement('option');
         option.value = u.uid;
         option.textContent = u.username;
         select.appendChild(option);
       });
-      
-      // Если ничего нет (нет даже текущего) — показываем заглушку
       if (select.children.length === 0) {
         const option = document.createElement('option');
         option.value = '';
         option.textContent = 'Нет пользователей с избранным';
         select.appendChild(option);
       }
-      
-      // Восстанавливаем выбранное значение или ставим первое
       if (selectedFavoritesUserUid && Array.from(select.options).some(o => o.value === selectedFavoritesUserUid)) {
         select.value = selectedFavoritesUserUid;
       } else if (select.children.length > 0) {
@@ -1114,23 +1040,17 @@
       }
     }
 
-    // Загрузка избранных видео для выбранного пользователя
     async function loadFavoritesForUser(uid) {
       const list = $('favoritesList');
       list.innerHTML = '';
-      
       let favIds = [];
       if (uid === currentUser?.uid) {
         favIds = currentFavorites;
       } else {
         const userDoc = await getDoc(doc(db, 'users', uid));
-        if (userDoc.exists()) {
-          favIds = userDoc.data().favorites || [];
-        }
+        if (userDoc.exists()) favIds = userDoc.data().favorites || [];
       }
-      
       if (favIds.length === 0) {
-        // Проверяем, чьё это избранное
         if (uid === currentUser?.uid) {
           list.innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">Вы еще не добавили ни одного видео в избранное.</p>';
         } else {
@@ -1138,7 +1058,6 @@
         }
         return;
       }
-      
       for (const id of favIds) {
         const docSnap = await getDoc(doc(db, 'videos', id));
         if (docSnap.exists()) {
@@ -1156,22 +1075,14 @@
 
     async function openFavoritesModal() {
       if (!currentUser) return;
-      
-      // Загружаем список пользователей с избранным
       await loadFavoritesUsers();
-      
-      // ВСЕГДА по умолчанию показываем своё избранное
       selectedFavoritesUserUid = currentUser.uid;
-      
       populateFavoritesUserSelect();
-      
-      // Загружаем избранное для выбранного пользователя (своего)
       if (selectedFavoritesUserUid) {
         await loadFavoritesForUser(selectedFavoritesUserUid);
       } else {
         $('favoritesList').innerHTML = '<p class="text-sm text-gray-500 col-span-3 text-center py-8">Нет доступных избранных видео.</p>';
       }
-      
       showModal('favoritesModal', 'favoritesModalContainer');
     }
 
@@ -1183,9 +1094,7 @@
           snap.forEach(d => { const g = d.data().name; if (!games.includes(g)) games.push(g); });
           DEFAULT_GAMES.forEach(g => { if (!games.includes(g)) games.push(g); });
         } else { games = [...DEFAULT_GAMES]; }
-        
         games.forEach(g => { if (!authorsByGame[g]) authorsByGame[g] = ['narcoeyes']; });
-        
         if (currentView === 'games') renderCurrentView();
         updateDashboard();
         populateYearSelect();
@@ -1197,6 +1106,8 @@
         if (currentView === 'videos') renderVideosView();
         updateDashboard();
         populateYearSelect();
+        // Если в URL был хэш с видео, но видео ещё не было загружено — открываем сейчас
+        tryOpenPendingVideo();
       });
 
       onSnapshot(collection(db, 'authors'), snap => {
@@ -1220,22 +1131,13 @@
     function populateYearSelect() {
       const select = $('videoYear');
       if (!select) return;
-      
       const currentYear = new Date().getFullYear();
       const years = new Set();
-      
-      for (let y = 2023; y <= currentYear; y++) {
-        years.add(y.toString());
-      }
-      
+      for (let y = 2023; y <= currentYear; y++) years.add(y.toString());
       videos.forEach(v => { if (v.year) years.add(v.year); });
-
       const sortedYears = Array.from(years).sort();
-      
       select.innerHTML = '<option value="">Не указан</option>';
-      sortedYears.forEach(y => {
-        select.innerHTML += `<option value="${y}">${y}</option>`;
-      });
+      sortedYears.forEach(y => { select.innerHTML += `<option value="${y}">${y}</option>`; });
     }
 
     function populateUsersSelect() {
@@ -1253,9 +1155,7 @@
       const select = $('selectEditGame');
       if (!select) return;
       select.innerHTML = '<option value="">Выберите игру...</option>';
-      games.forEach(g => {
-        select.innerHTML += `<option value="${g}">${g}</option>`;
-      });
+      games.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
     }
 
     // --- Views ---
@@ -1280,41 +1180,24 @@
       
       const center = document.createElement('div');
       center.className = 'absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none z-10';
-      
       const subtitleHtml = centerSubtitle ? `<p class="text-sm font-light text-gray-400 mt-2">${centerSubtitle}</p>` : '';
-      
       center.innerHTML = `<h1 class="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400 drop-shadow-sm">${centerTitle}</h1>${subtitleHtml}${currentView !== 'games' ? '<button id="backToGamesBtn" class="pointer-events-auto mt-4 text-xs text-indigo-400 hover:text-indigo-300 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-1"><i data-lucide="arrow-left" class="w-3 h-3"></i> Назад</button>' : ''}`;
-      
       container.appendChild(center);
 
       const nodeRadius = 55; 
-      
       let baseRadius = Math.max(220, items.length * 18); 
       if (items.length < 6) baseRadius = 250;
-
       const count = items.length;
       const centerX = 325; 
       const centerY = 325;
 
       const nodesData = items.map((item, index) => {
         const angle = (index / count) * 2 * Math.PI - Math.PI / 2;
-        
         const randomOffset = items.length < 6 ? (Math.random() * 10) - 5 : (Math.random() * 60) - 30; 
         const currentRadius = baseRadius + randomOffset;
-        
         const x = centerX + currentRadius * Math.cos(angle) - nodeRadius;
         const y = centerY + currentRadius * Math.sin(angle) - nodeRadius;
-        
-        return { 
-            id: item, 
-            baseX: x, 
-            baseY: y, 
-            x, y, 
-            vx: 0, vy: 0, 
-            element: null,
-            mass: 1 + Math.random() * 0.5,
-            bounce: 0.5 + Math.random() * 0.5
-        };
+        return { id: item, baseX: x, baseY: y, x, y, vx: 0, vy: 0, element: null, mass: 1 + Math.random() * 0.5, bounce: 0.5 + Math.random() * 0.5 };
       });
 
       nodesData.forEach(node => {
@@ -1322,99 +1205,48 @@
         el.className = 'flower-node liquid-glass-interactive font-medium shadow-lg';
         el.innerText = node.id;
         el.style.left = `${node.x}px`; el.style.top = `${node.y}px`;
-        
-        let isDraggingNode = false;
-        let startX, startY;
-        let hasMoved = false;
-        
-        el.addEventListener('pointerdown', e => {
-          isDraggingNode = true; hasMoved = false; startX = e.clientX; startY = e.clientY;
-          node.offsetX = e.clientX - node.x; node.offsetY = e.clientY - node.y;
-          el.setPointerCapture(e.pointerId);
-          el.style.zIndex = 100;
-        });
-        el.addEventListener('pointermove', e => {
-          if (!isDraggingNode) return;
-          if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5) hasMoved = true;
-          if (hasMoved) {
-            node.x = e.clientX - node.offsetX; node.y = e.clientY - node.offsetY;
-            el.style.left = `${node.x}px`; el.style.top = `${node.y}px`;
-          }
-        });
-        el.addEventListener('pointerup', e => {
-          if (!isDraggingNode) return;
-          isDraggingNode = false; el.style.zIndex = '';
-          if (!hasMoved) onSelect(node.id);
-        });
-        
+        let isDraggingNode = false; let startX, startY; let hasMoved = false;
+        el.addEventListener('pointerdown', e => { isDraggingNode = true; hasMoved = false; startX = e.clientX; startY = e.clientY; node.offsetX = e.clientX - node.x; node.offsetY = e.clientY - node.y; el.setPointerCapture(e.pointerId); el.style.zIndex = 100; });
+        el.addEventListener('pointermove', e => { if (!isDraggingNode) return; if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5) hasMoved = true; if (hasMoved) { node.x = e.clientX - node.offsetX; node.y = e.clientY - node.offsetY; el.style.left = `${node.x}px`; el.style.top = `${node.y}px`; } });
+        el.addEventListener('pointerup', e => { if (!isDraggingNode) return; isDraggingNode = false; el.style.zIndex = ''; if (!hasMoved) onSelect(node.id); });
         node.element = el;
         container.appendChild(el);
       });
 
       app.appendChild(container);
-
       if ($('backToGamesBtn')) $('backToGamesBtn').onclick = () => { currentView = 'games'; renderCurrentView(); };
 
       (function physics() {
-        const k = 0.015; 
-        const damping = 0.92;
-        
-        const safeZoneRadius = 160; 
-        
+        const k = 0.015; const damping = 0.92; const safeZoneRadius = 160; 
         nodesData.forEach(n => {
-          const fx = (n.baseX - n.x) * k;
-          const fy = (n.baseY - n.y) * k;
-          
-          n.vx = (n.vx + fx) * damping;
-          n.vy = (n.vy + fy) * damping;
-          
-          n.x += n.vx;
-          n.y += n.vy;
-
+          const fx = (n.baseX - n.x) * k; const fy = (n.baseY - n.y) * k;
+          n.vx = (n.vx + fx) * damping; n.vy = (n.vy + fy) * damping;
+          n.x += n.vx; n.y += n.vy;
           const distToCenter = Math.hypot(n.x + nodeRadius - centerX, n.y + nodeRadius - centerY);
           if (distToCenter < safeZoneRadius) {
             const angle = Math.atan2(n.y + nodeRadius - centerY, n.x + nodeRadius - centerX);
             const targetX = centerX + Math.cos(angle) * safeZoneRadius - nodeRadius;
             const targetY = centerY + Math.sin(angle) * safeZoneRadius - nodeRadius;
-            
-            n.x += (targetX - n.x) * 0.2;
-            n.y += (targetY - n.y) * 0.2;
-            
-            n.vx *= 0.5;
-            n.vy *= 0.5;
+            n.x += (targetX - n.x) * 0.2; n.y += (targetY - n.y) * 0.2;
+            n.vx *= 0.5; n.vy *= 0.5;
           }
         });
-
         for (let i = 0; i < nodesData.length; i++) {
           for (let j = i + 1; j < nodesData.length; j++) {
-            const n1 = nodesData[i];
-            const n2 = nodesData[j];
-            const dx = n1.x - n2.x;
-            const dy = n1.y - n2.y;
+            const n1 = nodesData[i]; const n2 = nodesData[j];
+            const dx = n1.x - n2.x; const dy = n1.y - n2.y;
             const dist = Math.hypot(dx, dy);
-            
             const minDist = nodeRadius * 2 + 5;
-
             if (dist < minDist && dist > 0) {
               const force = (minDist - dist) / minDist;
-              const pushX = (dx / dist) * force * 2;
-              const pushY = (dy / dist) * force * 2;
-              
-              n1.x += pushX; n1.y += pushY;
-              n2.x -= pushX; n2.y -= pushY;
-              
+              const pushX = (dx / dist) * force * 2; const pushY = (dy / dist) * force * 2;
+              n1.x += pushX; n1.y += pushY; n2.x -= pushX; n2.y -= pushY;
               n1.vx += pushX * 0.5; n1.vy += pushY * 0.5;
               n2.vx -= pushX * 0.5; n2.vy -= pushY * 0.5;
             }
           }
         }
-
-        nodesData.forEach(n => {
-          if (n.element) {
-            n.element.style.left = `${n.x}px`;
-            n.element.style.top = `${n.y}px`;
-          }
-        });
+        nodesData.forEach(n => { if (n.element) { n.element.style.left = `${n.x}px`; n.element.style.top = `${n.y}px`; } });
         requestAnimationFrame(physics);
       })();
     }
@@ -1422,13 +1254,11 @@
     function renderVideosView() {
       const app = $('app');
       app.innerHTML = ''; 
-      
       let availableYears = new Set();
       videos.filter(v => v.games?.includes(selectedGame) && (selectedAuthor === 'Общие' || v.author === selectedAuthor)).forEach(v => {
         if (v.year) availableYears.add(v.year);
       });
       const sortedYears = Array.from(availableYears).sort();
-
       const filtered = videos.filter(v => {
         const matchGame = v.games?.includes(selectedGame);
         const matchAuthor = (selectedAuthor === 'Общие' || v.author === selectedAuthor);
@@ -1437,22 +1267,13 @@
       });
 
       const c = document.createElement('div'); c.className = 'w-full max-w-6xl mx-auto fade-enter';
-      
       let html = `<div class="flex items-center justify-between mb-8 flex-wrap gap-4">
         <div class="flex items-center gap-3">
           <button id="backBtn" class="liquid-glass-interactive px-4 py-2 rounded-full text-xs flex items-center gap-2 hover:text-white"><i data-lucide="arrow-left" class="w-4 h-4"></i> Назад</button>
           <div><h2 class="text-2xl font-bold text-white">${selectedGame}</h2><p class="text-xs text-gray-400">Автор: ${selectedAuthor}</p></div>
         </div>`;
-        
       if (sortedYears.length > 0) {
-        html += `
-        <div class="relative">
-          <select id="yearFilter" class="liquid-glass-interactive appearance-none bg-white/5 border border-white/10 rounded-full px-4 py-2 pr-10 text-sm text-white focus:outline-none cursor-pointer">
-            <option value="">Все года</option>
-            ${sortedYears.map(y => `<option value="${y}" ${selectedYear === y ? 'selected' : ''}>${y} год</option>`).join('')}
-          </select>
-          <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-        </div>`;
+        html += `<div class="relative"><select id="yearFilter" class="liquid-glass-interactive appearance-none bg-white/5 border border-white/10 rounded-full px-4 py-2 pr-10 text-sm text-white focus:outline-none cursor-pointer"><option value="">Все года</option>${sortedYears.map(y => `<option value="${y}" ${selectedYear === y ? 'selected' : ''}>${y} год</option>`).join('')}</select><i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i></div>`;
       }
       html += `</div>`;
 
@@ -1464,7 +1285,6 @@
           const yt = extractYouTubeId(v.url);
           const deleteBtn = (currentUser && currentUser.isAdmin) ? `<button onclick="event.stopPropagation(); window.deleteVideo('${v.id}')" class="absolute top-3 left-3 z-10 bg-black/60 hover:bg-red-600 text-white p-2 rounded-full backdrop-blur-md transition-colors" title="Удалить видео"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : '';
           const yearBadge = v.year ? `<span class="absolute top-3 right-3 z-10 bg-indigo-500/80 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur-md">${v.year}</span>` : '';
-          
           html += `<div class="liquid-glass-interactive rounded-2xl overflow-hidden cursor-pointer group flex flex-col relative" onclick="window.openVideoModal('${v.id}')"><div class="relative aspect-video bg-black overflow-hidden"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="${v.title}">${deleteBtn}${yearBadge}<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"><div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white"><i data-lucide="play" class="w-6 h-6 fill-white"></i></div></div></div><div class="p-4 flex flex-col flex-grow justify-between"><div><h3 class="font-medium text-sm text-white line-clamp-2">${v.title}</h3><p class="text-xs text-gray-400 mt-1">Автор: ${v.author}</p></div><div class="flex items-center justify-between text-[10px] text-gray-500 mt-4 pt-2 border-t border-white/5"><span>${(v.games||[]).join(', ')}</span></div></div></div>`;
         });
         html += `</div>`;
@@ -1472,15 +1292,10 @@
       c.innerHTML = html; app.appendChild(c);
 
       $('backBtn').onclick = () => { currentView = 'authors'; selectedYear = null; renderCurrentView(); };
-      
       const yearFilter = $('yearFilter');
       if (yearFilter) {
-        yearFilter.onchange = (e) => {
-          selectedYear = e.target.value || null;
-          renderVideosView();
-        };
+        yearFilter.onchange = (e) => { selectedYear = e.target.value || null; renderVideosView(); };
       }
-
       lucide.createIcons();
     }
 
@@ -1492,7 +1307,8 @@
     // --- Video Modal ---
     window.openVideoModal = id => {
       activeVideoId = id;
-      const v = videos.find(x => x.id === id); if (!v) return;
+      const v = videos.find(x => x.id === id); 
+      if (!v) return;
       $('modalIframe').src = `https://www.youtube.com/embed/${extractYouTubeId(v.url)}?autoplay=1`;
       $('modalVideoTitle').innerText = v.title;
       $('modalVideoAuthor').innerText = `Автор: ${v.author}`;
@@ -1505,7 +1321,6 @@
         $('modalVideoYear').classList.add('hidden');
       }
 
-      // Настройка кнопки избранного
       const heartBtn = $('modalHeartBtn');
       if (currentUser && currentFavorites.includes(id)) {
         heartBtn.classList.add('active');
@@ -1517,36 +1332,36 @@
 
       if (currentUser && currentUser.isAdmin) {
         $('adminYearBlock').classList.remove('hidden');
-        
         const yearSelect = $('editVideoYearSelect');
         const currentYear = new Date().getFullYear();
         const years = new Set();
         for (let y = 2023; y <= currentYear; y++) years.add(y.toString());
-        
         yearSelect.innerHTML = '<option value="">Без года</option>';
         Array.from(years).sort().forEach(y => {
           yearSelect.innerHTML += `<option value="${y}" ${v.year === y ? 'selected' : ''}>${y} год</option>`;
         });
-
         $('saveVideoYearBtn').onclick = async () => {
           const newYear = yearSelect.value;
           try {
             await updateDoc(doc(db, 'videos', id), { year: newYear || null });
             alert('Год обновлен!');
             if (currentView === 'videos') renderVideosView();
-          } catch (err) {
-            alert('Ошибка: ' + err.message);
-          }
+          } catch (err) { alert('Ошибка: ' + err.message); }
         };
       } else {
         $('adminYearBlock').classList.add('hidden');
       }
 
+      // Устанавливаем хэш URL для deep link
+      setVideoHash(id);
+
       loadComments(id);
       showModal('videoModal','videoModalContainer');
     };
+
     function closeVideoModal() {
       hideModal('videoModal','videoModalContainer');
+      clearVideoHash();
       setTimeout(() => { $('modalIframe').src = ''; activeVideoId = null; if (commentsUnsubscribe) { commentsUnsubscribe(); commentsUnsubscribe = null; } }, 300);
     }
 
@@ -1554,6 +1369,53 @@
       if (videos.length === 0) { alert('В базе пока нет видео!'); return; }
       const randomVideo = videos[Math.floor(Math.random() * videos.length)];
       window.openVideoModal(randomVideo.id);
+    };
+
+    // --- Deep link logic ---
+    // Пытается открыть видео из хэша URL, если оно ещё не было открыто
+    function tryOpenPendingVideo() {
+      if (!pendingVideoIdFromHash) return;
+      const v = videos.find(x => x.id === pendingVideoIdFromHash);
+      if (!v) return; // Видео ещё не загружено или не существует
+      const idToOpen = pendingVideoIdFromHash;
+      pendingVideoIdFromHash = null;
+      // Небольшая задержка, чтобы UI успел отрисоваться
+      setTimeout(() => window.openVideoModal(idToOpen), 100);
+    }
+
+    // Обработка изменения хэша (например, при переходе по ссылке в адресной строке)
+    window.addEventListener('hashchange', () => {
+      const videoId = getVideoIdFromHash();
+      if (videoId && videoId !== activeVideoId) {
+        const v = videos.find(x => x.id === videoId);
+        if (v) {
+          window.openVideoModal(videoId);
+        } else {
+          // Видео ещё не загрузилось — запомним и попробуем позже
+          pendingVideoIdFromHash = videoId;
+        }
+      } else if (!videoId && activeVideoId) {
+        // Хэш убрали — закрываем модалку
+        closeVideoModal();
+      }
+    });
+
+    // Кнопка «Копировать ссылку»
+    $('copyLinkBtn').onclick = async () => {
+      if (!activeVideoId) return;
+      const link = `${window.location.origin}${window.location.pathname}#video=${encodeURIComponent(activeVideoId)}`;
+      try {
+        await navigator.clipboard.writeText(link);
+        // Временная обратная связь
+        const btn = $('copyLinkBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i data-lucide="check" class="w-5 h-5 text-emerald-400"></i> <span class="text-emerald-400">Скопировано!</span>';
+        lucide.createIcons();
+        setTimeout(() => { btn.innerHTML = originalText; lucide.createIcons(); }, 1500);
+      } catch (err) {
+        // Fallback
+        prompt('Скопируйте ссылку:', link);
+      }
     };
 
     // --- Comments Logic (Tree Structure) ---
@@ -1572,8 +1434,7 @@
           if (rootReplies.length > 0) {
             const threadContainer = document.createElement('div');
             threadContainer.className = 'relative pl-4 ml-2 mt-2 space-y-2';
-            const firstReply = rootReplies[0];
-            threadContainer.appendChild(createCommentElement(firstReply, true));
+            threadContainer.appendChild(createCommentElement(rootReplies[0], true));
             if (rootReplies.length > 1) {
               const moreBtn = document.createElement('button');
               moreBtn.className = 'text-[11px] text-indigo-400 hover:text-indigo-300 font-medium ml-2 flex items-center gap-1 mt-1';
@@ -1725,7 +1586,6 @@
       if (!uid) return;
       const user = allUsers.find(u => u.uid === uid);
       if (!user) return;
-      
       await addDoc(collection(db, 'members'), { uid: user.uid, username: user.username, avatar: user.avatar, createdAt: serverTimestamp() });
       alert(`${user.username} добавлен в участники!`);
       $('selectUser').value = '';
@@ -1736,31 +1596,23 @@
       const oldName = $('selectEditGame').value;
       const newName = $('newGameNameInput').value.trim();
       if (!oldName || !newName) return;
-
       try {
-        // 1. Обновляем название в коллекции игр
         const qGames = query(collection(db, 'games'), where('name', '==', oldName));
         const snapGames = await getDocs(qGames);
         if (!snapGames.empty) {
           const docId = snapGames.docs[0].id;
           await updateDoc(doc(db, 'games', docId), { name: newName });
         }
-
-        // 2. Обновляем название во всех видео
         const qVideos = query(collection(db, 'videos'), where('games', 'array-contains', oldName));
         const snapVideos = await getDocs(qVideos);
-        
         for (const videoDoc of snapVideos.docs) {
           const videoData = videoDoc.data();
           const updatedGames = videoData.games.map(g => g === oldName ? newName : g);
           await updateDoc(doc(db, 'videos', videoDoc.id), { games: updatedGames });
         }
-
         alert(`Игра переименована с "${oldName}" на "${newName}" во всех видео!`);
         hideModal('adminModal','adminModalContainer'); e.target.reset();
-      } catch (err) {
-        alert('Ошибка при обновлении названия: ' + err.message);
-      }
+      } catch (err) { alert('Ошибка при обновлении названия: ' + err.message); }
     }
 
     window.removeMember = async (docId) => {
@@ -1778,6 +1630,14 @@
     document.addEventListener('DOMContentLoaded', () => {
       calculateDays(); renderCurrentView(); loadData();
       initParticles();
+      
+      // Проверяем хэш при загрузке страницы
+      const initialVideoId = getVideoIdFromHash();
+      if (initialVideoId) {
+        pendingVideoIdFromHash = initialVideoId;
+        // Попытаемся открыть сразу, если видео уже загружено
+        setTimeout(tryOpenPendingVideo, 300);
+      }
       
       $('authBtn').onclick = () => showModal('authModal','authModalContainer');
       $('closeAuthModal').onclick = () => hideModal('authModal','authModalContainer');
@@ -1804,11 +1664,9 @@
       $('closeThreadModal').onclick = () => { hideModal('threadModal', 'threadModalContainer'); if(threadCommentsUnsubscribe) threadCommentsUnsubscribe(); };
       $('threadCommentForm').onsubmit = submitThreadComment;
 
-      // Избранное
       $('headerFavoritesBtn').onclick = openFavoritesModal;
       $('modalHeartBtn').onclick = toggleFavorite;
 
-      // Обработчик смены пользователя в модалке избранного
       const favoritesUserSelect = $('favoritesUserSelect');
       if (favoritesUserSelect) {
         favoritesUserSelect.addEventListener('change', async (e) => {
@@ -1821,7 +1679,6 @@
         });
       }
 
-      // Переключение вкладок в админке
       $('tabVideo').onclick = () => { $('addVideoForm').classList.remove('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabVideo').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
       $('tabAuthor').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.remove('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabAuthor').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
       $('tabGame').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.remove('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabGame').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };

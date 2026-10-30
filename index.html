@@ -1819,7 +1819,18 @@
       
       $('commentForm').onsubmit = submitComment;
       $('cancelReply').onclick = () => { $('replyingToIndicator').classList.add('hidden'); activeParentId = null; };
-      $('homeBtn').onclick = () => { currentView = 'games'; renderCurrentView(); };
+      // Пасхалка: каждые 5 нажатий на «rekai» — один раз играет rekai.mp3
+      const rekaiSound = new Audio('rekai.mp3');
+      rekaiSound.preload = 'auto';
+      let rekaiClicks = 0;
+      $('homeBtn').onclick = () => {
+        currentView = 'games'; renderCurrentView();
+        rekaiClicks++;
+        if (rekaiClicks % 5 === 0) {
+          rekaiSound.currentTime = 0;
+          rekaiSound.play().catch(err => console.warn('rekai.mp3 не воспроизвёлся:', err));
+        }
+      };
 
       let lastIsMobile = window.innerWidth < MOBILE_BREAKPOINT;
       window.addEventListener('resize', () => {

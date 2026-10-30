@@ -1495,7 +1495,8 @@
     }
 
     // Mouse4 (боковая ближняя кнопка, button === 3). Блокируем стандартный «назад» браузера
-    ['mousedown', 'mouseup', 'auxclick', 'pointerdown', 'pointerup'].forEach(type => {
+    // ВАЖНО: pointerdown здесь нельзя блокировать — иначе браузер не пошлёт mousedown для первой нажатой кнопки
+    ['mousedown', 'mouseup', 'auxclick'].forEach(type => {
       window.addEventListener(type, e => { if (e.button === 3) { e.preventDefault(); e.stopPropagation(); } }, true);
     });
     window.addEventListener('mousedown', e => {

@@ -379,6 +379,7 @@
         <button id="tabUsers" class="text-gray-400 hover:text-white pb-2">Участники</button>
         <button id="tabSettings" class="text-gray-400 hover:text-white pb-2">Эффекты</button>
         <button id="tabEditGame" class="text-gray-400 hover:text-white pb-2">Редактировать игру</button>
+        <button id="tabOrder" class="text-gray-400 hover:text-white pb-2">Порядок игр</button>
       </div>
 
       <form id="addVideoForm" class="flex flex-col gap-4">
@@ -428,6 +429,24 @@
         </div>
         <p class="text-[10px] text-gray-500">Этот эффект увидят ВСЕ пользователи на сайте.</p>
         <button type="submit" id="saveSettingsBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Применить для всех</button>
+      </form>
+
+      <form id="orderGamesForm" class="flex flex-col gap-4 hidden">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Игра</label>
+          <select id="orderGameSelect" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900"></select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Новая позиция (номер)</label>
+          <input type="number" id="orderPosition" min="1" step="1" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="Например: 5">
+        </div>
+        <p class="text-[10px] text-gray-500">№1 стоит сверху круга, дальше номера идут по часовой стрелке. Остальные игры сдвигаются сами. Нажмите на игру в списке ниже, чтобы выбрать её.</p>
+        <button type="submit" id="orderSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm">Переместить</button>
+        <p id="orderStatus" class="text-xs text-center hidden"></p>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Текущий порядок</label>
+          <div id="gamesOrderList" class="flex flex-col gap-1 max-h-56 overflow-y-auto p-2 bg-white/5 rounded-xl border border-white/10"></div>
+        </div>
       </form>
 
       <form id="editGameForm" class="flex flex-col gap-4 hidden">
@@ -537,7 +556,9 @@
     const ADMIN_EMAIL_PREFIX = 'solexerg'; 
     const DEFAULT_GAMES = ["Counter Strike","GTA","Fears to fathom","Minecraft","Fortnite","Phasmophobia","REPO","Buckshot Roulette","Sons of the forest","Roblox","Red Dead Redemption","Gang Beasts","A way out","Nuclear nightmare","IRL","Прочее"];
 
-    let games = [...DEFAULT_GAMES];
+    let rawGames = [...DEFAULT_GAMES]; // игры в порядке загрузки из базы
+    let gamesOrder = [];               // сохранённый админом порядок (названия)
+    let games = [...DEFAULT_GAMES];    // итоговый порядок на сайте
     let authorsByGame = {};
     DEFAULT_GAMES.forEach(g => authorsByGame[g] = ['narcoeyes']);
     let videos = [];
@@ -1121,13 +1142,17 @@
     function loadData() {
       onSnapshot(collection(db, 'games'), snap => {
         if (!snap.empty) {
-          games = [];
-          snap.forEach(d => { const g = d.data().name; if (!games.includes(g)) games.push(g); });
-          DEFAULT_GAMES.forEach(g => { if (!games.includes(g)) games.push(g); });
-        } else { games = [...DEFAULT_GAMES]; }
-        games.forEach(g => { if (!authorsByGame[g]) authorsByGame[g] = ['narcoeyes']; });
-        if (currentView === 'games') renderCurrentView();
-        updateDashboard(); populateYearSelect(); populateEditGameSelect();
+          rawGames = [];
+          snap.forEach(d => { const g = d.data().name; if (!rawGames.includes(g)) rawGames.push(g); });
+          DEFAULT_GAMES.forEach(g => { if (!rawGames.includes(g)) rawGames.push(g); });
+        } else { rawGames = [...DEFAULT_GAMES]; }
+        recomputeGames();
+      });
+
+      // Порядок игр, который выставил админ
+      onSnapshot(doc(db, 'settings', 'gamesOrder'), snap => {
+        gamesOrder = (snap.exists() && Array.isArray(snap.data().order)) ? snap.data().order : [];
+        recomputeGames();
       });
 
       onSnapshot(collection(db, 'videos'), snap => {
@@ -1169,6 +1194,64 @@
       const select = $('selectUser'); if (!select) return;
       select.innerHTML = '<option value="">Выберите пользователя...</option>';
       allUsers.forEach(u => { if (!members.find(m => m.uid === u.uid)) select.innerHTML += `<option value="${u.uid}">${u.username}</option>`; });
+    }
+
+    // Собирает итоговый список игр: сначала по сохранённому порядку, новые/неупомянутые — в конец
+    function recomputeGames() {
+      const pos = g => { const i = gamesOrder.indexOf(g); return i === -1 ? Infinity : i; };
+      games = rawGames
+        .map((g, i) => ({ g, i }))
+        .sort((a, b) => {
+          const pa = pos(a.g), pb = pos(b.g);
+          if (pa !== pb) return pa === Infinity ? 1 : pb === Infinity ? -1 : pa - pb;
+          return a.i - b.i;
+        })
+        .map(x => x.g);
+      games.forEach(g => { if (!authorsByGame[g]) authorsByGame[g] = ['narcoeyes']; });
+      if (currentView === 'games') renderCurrentView();
+      updateDashboard(); populateYearSelect(); populateEditGameSelect(); renderOrderUI();
+    }
+
+    // Вкладка «Порядок игр»: выпадающий список + нумерованный список
+    function renderOrderUI() {
+      const select = $('orderGameSelect'), list = $('gamesOrderList');
+      if (!select || !list) return;
+      const prev = select.value;
+      select.innerHTML = games.map((g, i) => `<option value="${g.replace(/"/g, '&quot;')}">${i + 1}. ${g}</option>`).join('');
+      if (prev && games.includes(prev)) select.value = prev;
+      $('orderPosition').value = games.indexOf(select.value) + 1;
+      $('orderPosition').max = games.length;
+      list.innerHTML = '';
+      games.forEach((g, i) => {
+        const row = document.createElement('div');
+        const active = g === select.value;
+        row.className = `flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${active ? 'bg-indigo-500/20 text-white' : 'text-gray-300 hover:bg-white/10'}`;
+        row.innerHTML = `<span class="w-6 text-right font-semibold text-indigo-300">${i + 1}</span><span class="truncate"></span>`;
+        row.lastChild.textContent = g;
+        row.onclick = () => { select.value = g; $('orderPosition').value = i + 1; renderOrderUI(); };
+        list.appendChild(row);
+      });
+    }
+
+    async function moveGame(e) {
+      e.preventDefault();
+      const name = $('orderGameSelect').value;
+      const status = $('orderStatus'), btn = $('orderSubmitBtn');
+      if (!name) return;
+      let pos = parseInt($('orderPosition').value, 10);
+      if (isNaN(pos)) return;
+      pos = Math.max(1, Math.min(games.length, pos));
+      const arr = games.filter(g => g !== name);
+      arr.splice(pos - 1, 0, name);
+      btn.disabled = true;
+      try {
+        await setDoc(doc(db, 'settings', 'gamesOrder'), { order: arr });
+        status.className = 'text-xs text-center text-emerald-400';
+        status.innerText = `«${name}» теперь на позиции ${pos}`;
+      } catch (err) {
+        status.className = 'text-xs text-center text-red-400';
+        status.innerText = 'Ошибка: ' + err.message;
+      } finally { btn.disabled = false; }
     }
 
     function populateEditGameSelect() {
@@ -1535,7 +1618,7 @@
       $('adminGameSelector').innerHTML = games.map(g => `<label class="flex items-center gap-1.5 text-xs text-gray-300 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5 cursor-pointer hover:bg-white/10"><input type="checkbox" value="${g}" class="rounded text-indigo-600 focus:ring-0"> ${g}</label>`).join('');
       $('videoAuthor').innerHTML = [...new Set(Object.values(authorsByGame).flat())].map(a => `<option value="${a}">${a}</option>`).join('');
       $('authorGame').innerHTML = games.map(g => `<option value="${g}">${g}</option>`).join('');
-      populateUsersSelect(); populateYearSelect(); populateEditGameSelect();
+      populateUsersSelect(); populateYearSelect(); populateEditGameSelect(); renderOrderUI();
     }
 
     async function addVideo(e) {
@@ -1593,6 +1676,9 @@
           const videoData = videoDoc.data();
           const updatedGames = videoData.games.map(g => g === oldName ? newName : g);
           await updateDoc(doc(db, 'videos', videoDoc.id), { games: updatedGames });
+        }
+        if (gamesOrder.includes(oldName)) {
+          await setDoc(doc(db, 'settings', 'gamesOrder'), { order: gamesOrder.map(g => g === oldName ? newName : g) });
         }
         alert(`Игра переименована с "${oldName}" на "${newName}" во всех видео!`);
         hideModal('adminModal','adminModalContainer'); e.target.reset();
@@ -1652,18 +1738,24 @@
         });
       }
 
-      $('tabVideo').onclick = () => { $('addVideoForm').classList.remove('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabVideo').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabAuthor').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.remove('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabAuthor').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabGame').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.remove('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabGame').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabUsers').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.remove('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.add('hidden'); $('tabUsers').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabSettings').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.remove('hidden'); $('editGameForm').classList.add('hidden'); $('tabSettings').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabEditGame').className='text-gray-400 hover:text-white pb-2'; };
-      $('tabEditGame').onclick = () => { $('addVideoForm').classList.add('hidden'); $('addAuthorForm').classList.add('hidden'); $('addGameForm').classList.add('hidden'); $('addUserForm').classList.add('hidden'); $('settingsForm').classList.add('hidden'); $('editGameForm').classList.remove('hidden'); $('tabEditGame').className='text-white border-b-2 border-indigo-500 pb-2'; $('tabVideo').className='text-gray-400 hover:text-white pb-2'; $('tabAuthor').className='text-gray-400 hover:text-white pb-2'; $('tabGame').className='text-gray-400 hover:text-white pb-2'; $('tabUsers').className='text-gray-400 hover:text-white pb-2'; $('tabSettings').className='text-gray-400 hover:text-white pb-2'; };
+      const ADMIN_TABS = { tabVideo: 'addVideoForm', tabAuthor: 'addAuthorForm', tabGame: 'addGameForm', tabUsers: 'addUserForm', tabSettings: 'settingsForm', tabEditGame: 'editGameForm', tabOrder: 'orderGamesForm' };
+      Object.entries(ADMIN_TABS).forEach(([tabId, formId]) => {
+        $(tabId).onclick = () => {
+          Object.entries(ADMIN_TABS).forEach(([t, f]) => {
+            $(f).classList.toggle('hidden', t !== tabId);
+            $(t).className = t === tabId ? 'text-white border-b-2 border-indigo-500 pb-2' : 'text-gray-400 hover:text-white pb-2';
+          });
+          if (tabId === 'tabOrder') renderOrderUI();
+        };
+      });
 
       $('addVideoForm').onsubmit = addVideo;
       $('addAuthorForm').onsubmit = addAuthor;
       $('addGameForm').onsubmit = addGame;
       $('addUserForm').onsubmit = addMember;
       $('editGameForm').onsubmit = editGame;
+      $('orderGamesForm').onsubmit = moveGame;
+      $('orderGameSelect').onchange = renderOrderUI;
       
       $('commentForm').onsubmit = submitComment;
       $('cancelReply').onclick = () => { $('replyingToIndicator').classList.add('hidden'); activeParentId = null; };

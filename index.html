@@ -342,6 +342,10 @@
       </div>
     </header>
 
+    <div id="guestBanner" class="hidden fixed top-[68px] left-1/2 -translate-x-1/2 z-40 max-w-[92vw] w-max px-4 py-2 rounded-2xl bg-red-500/15 border border-red-500/40 text-red-200 text-xs sm:text-sm text-center backdrop-blur-md shadow-lg pointer-events-none">
+      <span class="inline-flex items-center gap-2 justify-center"><i data-lucide="lock" class="w-4 h-4 flex-shrink-0"></i><span id="guestBannerText"></span></span>
+    </div>
+
     <main id="app" class="order-1 lg:flex-grow flex items-center justify-center relative pt-20 pb-8 lg:pb-12 px-4 z-10"></main>
 
     <footer class="order-4 pt-4 pb-20 lg:pb-4 text-center text-xs text-gray-500 font-light relative z-10"><p class="sm:hidden mb-1">группе <span id="daysCounterMobile" class="text-gray-300 font-medium">0</span> дней</p>&copy; 2023-2026 rekai. Все права защищены.</footer>
@@ -450,6 +454,7 @@
         <button id="tabAuthor" class="text-gray-400 hover:text-white pb-2">Авторы</button>
         <button id="tabGame" class="text-gray-400 hover:text-white pb-2">Игры</button>
         <button id="tabUsers" class="text-gray-400 hover:text-white pb-2">Участники</button>
+        <button id="tabRoles" class="text-gray-400 hover:text-white pb-2">Роли</button>
         <button id="tabSettings" class="text-gray-400 hover:text-white pb-2">Эффекты</button>
         <button id="tabEditGame" class="text-gray-400 hover:text-white pb-2">Редактировать игру</button>
         <button id="tabEditAuthor" class="text-gray-400 hover:text-white pb-2">Редактировать автора</button>
@@ -463,6 +468,10 @@
         <div><label class="block text-xs text-gray-400 mb-1">Автор отката</label><select id="videoAuthor" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900"></select></div>
         <div><label class="block text-xs text-gray-400 mb-1">Год создания</label><select id="videoYear" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900">
           <option value="">Не указан</option>
+        </select></div>
+        <div><label class="block text-xs text-gray-400 mb-1">Видимость</label><select id="videoVisibility" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900">
+          <option value="all">Видят все</option>
+          <option value="members">Только участники</option>
         </select></div>
         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Опубликовать видео</button>
       </form>
@@ -486,6 +495,28 @@
           </select>
         </div>
         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm mt-2">Добавить</button>
+      </form>
+
+      <!-- Роли пользователей (видны только админу) -->
+      <form id="rolesForm" class="flex flex-col gap-4 hidden">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Пользователь сайта</label>
+          <select id="rolesUserSelect" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900"></select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Роль</label>
+          <select id="rolesValueSelect" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900">
+            <option value="guest">Гость</option>
+            <option value="member">Участник</option>
+          </select>
+        </div>
+        <p class="text-[10px] text-gray-500">Гость — роль по умолчанию, видит только видео с видимостью «Видят все». Участник видит все видео, включая закрытые. Роли никому, кроме вас, не показываются.</p>
+        <button type="submit" id="rolesSubmitBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm">Сохранить роль</button>
+        <p id="rolesStatus" class="text-xs text-center hidden"></p>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Сейчас с ролью «Участник» (нажмите, чтобы выбрать)</label>
+          <div id="rolesMembersList" class="flex flex-col gap-1 max-h-40 overflow-y-auto p-2 bg-white/5 rounded-xl border border-white/10"></div>
+        </div>
       </form>
 
       <form id="settingsForm" class="flex flex-col gap-4 hidden">
@@ -565,7 +596,7 @@
       <button id="closeFavoritesModal" class="absolute top-4 right-4 text-gray-400 hover:text-white z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 flex-shrink-0">
         <h3 class="text-lg font-medium text-white flex items-center gap-2"><i data-lucide="heart" class="w-5 h-5 text-red-500 fill-current"></i> Избранное</h3>
-        <div class="relative w-full sm:w-64 sm:mr-8">
+        <div id="favoritesSelectWrap" class="relative w-full sm:w-64 sm:mr-8">
           <select id="favoritesUserSelect" class="w-full liquid-glass-interactive appearance-none bg-white/5 border border-white/10 rounded-full px-4 py-2 pr-10 text-sm text-white focus:outline-none cursor-pointer">
           </select>
         </div>
@@ -601,12 +632,24 @@
                 <i data-lucide="link" class="w-5 h-5"></i> <span>Копировать ссылку</span>
               </button>
             </div>
-            <div id="adminYearBlock" class="hidden">
-              <label class="block text-[10px] text-gray-400 mb-2 uppercase tracking-wider">Изменить год видео (Только для админа)</label>
-              <div class="flex items-center gap-2">
-                <select id="editVideoYearSelect" class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900 cursor-pointer">
-                </select>
-                <button id="saveVideoYearBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-1.5 px-3 rounded-lg text-xs transition-colors">Сохранить</button>
+            <div class="flex flex-wrap items-end gap-4">
+              <div id="adminYearBlock" class="hidden">
+                <label class="block text-[10px] text-gray-400 mb-2 uppercase tracking-wider">Изменить год видео (Только для админа)</label>
+                <div class="flex items-center gap-2">
+                  <select id="editVideoYearSelect" class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900 cursor-pointer">
+                  </select>
+                  <button id="saveVideoYearBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-1.5 px-3 rounded-lg text-xs transition-colors">Сохранить</button>
+                </div>
+              </div>
+              <div id="adminVisibilityBlock" class="hidden">
+                <label class="block text-[10px] text-gray-400 mb-2 uppercase tracking-wider">Видимость видео (Только для админа)</label>
+                <div class="flex items-center gap-2">
+                  <select id="editVideoVisibilitySelect" class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900 cursor-pointer">
+                    <option value="all">Видят все</option>
+                    <option value="members">Только участники</option>
+                  </select>
+                  <button id="saveVideoVisibilityBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-1.5 px-3 rounded-lg text-xs transition-colors">Сохранить</button>
+                </div>
               </div>
             </div>
           </div>
@@ -653,7 +696,8 @@
     let games = [...DEFAULT_GAMES];    // итоговый порядок на сайте
     let authorsByGame = {};
     DEFAULT_GAMES.forEach(g => authorsByGame[g] = ['narcoeyes']);
-    let videos = [];
+    let rawVideos = [];                // все видео из базы
+    let videos = [];                   // только те, что доступны текущему пользователю
     let allUsers = [];
     let members = [];
     let currentUser = null; 
@@ -681,6 +725,34 @@
     const $ = id => document.getElementById(id);
     const extractYouTubeId = url => { const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/); return (m && m[2].length === 11) ? m[2] : null; };
     const calculateDays = () => { const d = Math.floor(Math.abs(new Date() - START_DATE)/(1000*60*60*24)); $('daysCounter').innerText = d; $('daysCounterMobile').innerText = d; };
+
+    // --- Роли и видимость видео ---
+    // Роли: 'guest' (по умолчанию у всех) и 'member' (выдаёт админ). Админ видит всё.
+    // Видимость видео: 'all' (или не задана) — видят все, 'members' — только участники и админ.
+    const isMemberUser = () => !!currentUser && !currentUser.isNew && (currentUser.isAdmin || currentUser.role === 'member');
+    const canSeeVideo = v => !!v && (v.visibility !== 'members' || isMemberUser());
+
+    // Красное уведомление для гостей: сколько видео от них скрыто
+    function updateGuestBanner() {
+      const banner = $('guestBanner'); if (!banner) return;
+      const hidden = rawVideos.filter(v => !canSeeVideo(v)).length;
+      const isGuest = !!currentUser && !currentUser.isNew && !isMemberUser();
+      if (isGuest && hidden > 0) {
+        $('guestBannerText').textContent = `Вы вошли как гость. От вас скрыто ${hidden} видео`;
+        banner.classList.remove('hidden');
+        lucide.createIcons();
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function refreshVideos() {
+      updateGuestBanner();
+      videos = rawVideos.filter(canSeeVideo);
+      if (currentView === 'videos') renderVideosView();
+      updateDashboard(); populateYearSelect(); populateEditAuthorSelect();
+      tryOpenPendingVideo();
+    }
 
     // --- Управление URL (deep links) ---
     function getVideoIdFromHash() {
@@ -844,6 +916,7 @@
               avatar: data.avatar || `https://ui-avatars.com/api/?name=${data.username}&background=random`, 
               banner: data.banner || '', bio: data.bio || '', 
               isAdmin: user.email.split('@')[0] === ADMIN_EMAIL_PREFIX,
+              role: data.role === 'member' ? 'member' : 'guest', // по умолчанию — гость
               favorites: data.favorites || []
             };
             currentFavorites = data.favorites || [];
@@ -860,6 +933,9 @@
             if (!window._dataLoaded) {
               loadData();
               window._dataLoaded = true;
+            } else {
+              // роль могла измениться — пересчитываем список доступных видео
+              refreshVideos();
             }
           } else {
             currentUser = { uid: user.uid, isNew: true };
@@ -876,6 +952,7 @@
         hideModal('setupModal', 'setupModalContainer');
         updateAuthUI();
         updateMembersList();
+        if (window._dataLoaded) refreshVideos();
         
         // Показываем экран авторизации ТОЛЬКО если Firebase уже точно сказал, что юзера нет
         $('authScreen').classList.remove('hidden');
@@ -898,7 +975,7 @@
           errorEl.innerText = 'Этот ник уже занят. Придумайте другой.';
           errorEl.classList.remove('hidden'); btn.innerText = 'Сохранить'; btn.disabled = false; return;
         }
-        await setDoc(doc(db, 'users', currentUser.uid), { username, avatar: `https://ui-avatars.com/api/?name=${username}&background=random`, banner: '', bio: '', favorites: [], createdAt: serverTimestamp() });
+        await setDoc(doc(db, 'users', currentUser.uid), { username, avatar: `https://ui-avatars.com/api/?name=${username}&background=random`, banner: '', bio: '', favorites: [], role: 'guest', createdAt: serverTimestamp() });
         hideModal('setupModal', 'setupModalContainer');
       } catch (err) {
         errorEl.innerText = 'Ошибка БД: ' + err.message; errorEl.classList.remove('hidden');
@@ -958,10 +1035,16 @@
           if (userData.banner) { $('profileBannerBg').style.backgroundImage = `url(${userData.banner})`; $('profileBannerBg').style.backgroundSize = 'cover'; $('profileBannerBg').style.backgroundPosition = 'center'; }
           else { $('profileBannerBg').style.backgroundImage = 'none'; $('profileBannerBg').className = 'absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-3xl'; }
           $('editProfileBlock').classList.add('hidden'); $('logoutBtn').classList.add('hidden');
-          const userFavs = userData.favorites || [];
-          if (userFavs.length > 0) { $('profileFavoritesBlock').classList.remove('hidden'); await loadProfileFavorites(userFavs); }
-          else { $('profileFavoritesBlock').classList.add('hidden'); }
-          await loadUserVideos(userData.username);
+          if (isMemberUser()) {
+            const userFavs = userData.favorites || [];
+            if (userFavs.length > 0) { $('profileFavoritesBlock').classList.remove('hidden'); await loadProfileFavorites(userFavs); }
+            else { $('profileFavoritesBlock').classList.add('hidden'); }
+            await loadUserVideos(userData.username);
+          } else {
+            // гость: чужое избранное скрыто полностью, видео автора — размыты
+            $('profileFavoritesBlock').classList.add('hidden');
+            await loadUserVideos(userData.username, true);
+          }
         }
         showModal('profileModal', 'profileModalContainer');
       } catch (err) { console.error("Ошибка при открытии профиля:", err); }
@@ -1021,14 +1104,28 @@
       });
     }
 
-    async function loadUserVideos(username) {
+    async function loadUserVideos(username, blurred = false) {
       const list = $('profileVideosList');
       list.innerHTML = '<p class="text-xs text-gray-500 col-span-2">Загрузка...</p>';
       const q = query(collection(db, 'videos'), where('author', '==', username));
       const snap = await getDocs(q);
-      if (snap.empty) { list.innerHTML = '<p class="text-xs text-gray-500 col-span-2">У этого пользователя нет видео.</p>'; return; }
+      if (blurred) {
+        // Гость смотрит чужой профиль: реальные названия и превью не выводим вообще, только размытые заглушки
+        if (snap.empty) { list.innerHTML = '<p class="text-xs text-gray-500 col-span-2">У этого пользователя нет видео.</p>'; return; }
+        list.innerHTML = '';
+        const n = Math.min(snap.size, 6);
+        let cells = '';
+        for (let i = 0; i < n; i++) cells += '<div class="bg-black/40 rounded-xl overflow-hidden" style="filter:blur(8px)"><div class="aspect-video bg-gradient-to-br from-indigo-500/30 to-gray-700/60"></div><div class="p-3"><div class="h-3 w-3/4 bg-white/20 rounded mb-2"></div><div class="h-2 w-1/2 bg-white/10 rounded"></div></div></div>';
+        const wrap = document.createElement('div');
+        wrap.className = 'relative col-span-1 sm:col-span-2 rounded-xl overflow-hidden';
+        wrap.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 select-none pointer-events-none">${cells}</div><div class="absolute inset-0 flex items-center justify-center p-4 bg-black/30"><p class="text-xs sm:text-sm text-center text-red-200 bg-red-500/15 border border-red-500/40 rounded-xl px-4 py-3 backdrop-blur-md">Вы вошли в качестве гостя. Вы не можете просмотреть, в каких видео этот участник является автором.</p></div>`;
+        list.appendChild(wrap);
+        return;
+      }
+      const visibleDocs = snap.docs.filter(d => canSeeVideo(d.data()));
+      if (visibleDocs.length === 0) { list.innerHTML = '<p class="text-xs text-gray-500 col-span-2">У этого пользователя нет видео.</p>'; return; }
       list.innerHTML = '';
-      snap.forEach(d => {
+      visibleDocs.forEach(d => {
         const v = d.data(); const yt = extractYouTubeId(v.url);
         const card = document.createElement('div');
         card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group';
@@ -1045,7 +1142,7 @@
       if (favIds.length === 0) { list.innerHTML = '<p class="text-xs text-gray-500 col-span-2">Пусто</p>'; return; }
       for (const id of favIds) {
         const docSnap = await getDoc(doc(db, 'videos', id));
-        if (docSnap.exists()) {
+        if (docSnap.exists() && canSeeVideo(docSnap.data())) {
           const v = docSnap.data(); const yt = extractYouTubeId(v.url);
           const card = document.createElement('div');
           card.className = 'bg-black/40 rounded-xl overflow-hidden cursor-pointer group relative';
@@ -1190,6 +1287,11 @@
       const list = $('favoritesList');
       list.innerHTML = '';
       list.scrollTop = 0;
+      // гость может смотреть только своё избранное
+      if (uid !== currentUser?.uid && !isMemberUser()) {
+        list.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">Вы вошли в качестве гостя. Чужое избранное недоступно.</p>';
+        return;
+      }
       let favIds = [];
       if (uid === currentUser?.uid) {
         favIds = currentFavorites;
@@ -1209,7 +1311,7 @@
       const snaps = await Promise.all(favIds.map(id => getDoc(doc(db, 'videos', id))));
       const frag = document.createDocumentFragment();
       snaps.forEach((docSnap, i) => {
-        if (!docSnap.exists()) return;
+        if (!docSnap.exists() || !canSeeVideo(docSnap.data())) return;
         const id = favIds[i];
         const v = docSnap.data(); const yt = extractYouTubeId(v.url);
         const card = document.createElement('div');
@@ -1219,12 +1321,15 @@
         frag.appendChild(card);
       });
       list.appendChild(frag);
+      if (!list.children.length) list.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">Нет доступных избранных видео.</p>';
       lucide.createIcons();
     }
 
     async function openFavoritesModal() {
       if (!currentUser) return;
-      await loadFavoritesUsers();
+      // участники видят избранное всех, гости — только своё (выбор пользователя скрыт)
+      if (isMemberUser()) await loadFavoritesUsers(); else favoritesUsers = [];
+      $('favoritesSelectWrap').classList.toggle('hidden', !isMemberUser());
       selectedFavoritesUserUid = currentUser.uid;
       populateFavoritesUserSelect();
       if (selectedFavoritesUserUid) {
@@ -1253,10 +1358,8 @@
       });
 
       onSnapshot(collection(db, 'videos'), snap => {
-        videos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        if (currentView === 'videos') renderVideosView();
-        updateDashboard(); populateYearSelect(); populateEditAuthorSelect();
-        tryOpenPendingVideo();
+        rawVideos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        refreshVideos();
       });
 
       onSnapshot(collection(db, 'authors'), snap => {
@@ -1269,7 +1372,7 @@
 
       onSnapshot(collection(db, 'users'), snap => {
         allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-        populateUsersSelect(); updateMembersList(); populateEditAuthorSelect();
+        populateUsersSelect(); updateMembersList(); populateEditAuthorSelect(); populateRolesUI();
       });
 
       onSnapshot(collection(db, 'members'), snap => {
@@ -1292,6 +1395,50 @@
       const select = $('selectUser'); if (!select) return;
       select.innerHTML = '<option value="">Выберите пользователя...</option>';
       allUsers.forEach(u => { if (!members.find(m => m.uid === u.uid)) select.innerHTML += `<option value="${u.uid}">${u.username}</option>`; });
+    }
+
+    // --- Роли (вкладка «Роли» в админке) ---
+    function syncRoleValue() {
+      const u = allUsers.find(x => x.uid === $('rolesUserSelect').value);
+      $('rolesValueSelect').value = (u && u.role === 'member') ? 'member' : 'guest';
+    }
+
+    function populateRolesUI() {
+      const sel = $('rolesUserSelect'); if (!sel) return;
+      const prev = sel.value;
+      sel.innerHTML = '';
+      const list = allUsers.filter(u => u.username).sort((a, b) => a.username.localeCompare(b.username, 'ru'));
+      if (list.length === 0) sel.add(new Option('Нет пользователей', ''));
+      list.forEach(u => sel.add(new Option(`${u.username} — ${u.role === 'member' ? 'Участник' : 'Гость'}`, u.uid)));
+      if (prev && list.some(u => u.uid === prev)) sel.value = prev;
+      syncRoleValue();
+      const box = $('rolesMembersList'); if (!box) return;
+      box.innerHTML = '';
+      const ms = list.filter(u => u.role === 'member');
+      if (ms.length === 0) box.innerHTML = '<p class="text-xs text-gray-500">Пока никого</p>';
+      ms.forEach(u => {
+        const row = document.createElement('div');
+        row.className = 'text-xs px-2 py-1.5 rounded-lg cursor-pointer text-gray-300 hover:bg-white/10 transition-colors';
+        row.textContent = u.username;
+        row.onclick = () => { sel.value = u.uid; syncRoleValue(); };
+        box.appendChild(row);
+      });
+    }
+
+    async function saveRole(e) {
+      e.preventDefault();
+      const uid = $('rolesUserSelect').value; const role = $('rolesValueSelect').value;
+      const status = $('rolesStatus'), btn = $('rolesSubmitBtn');
+      if (!uid) return;
+      const show = (msg, ok) => { status.classList.remove('hidden'); status.className = 'text-xs text-center ' + (ok ? 'text-emerald-400' : 'text-red-400'); status.innerText = msg; };
+      btn.disabled = true;
+      try {
+        await updateDoc(doc(db, 'users', uid), { role: role === 'member' ? 'member' : 'guest' });
+        const u = allUsers.find(x => x.uid === uid);
+        show(`${u ? u.username : 'Пользователь'}: роль «${role === 'member' ? 'Участник' : 'Гость'}» сохранена`, true);
+      } catch (err) {
+        show('Ошибка: ' + err.message, false);
+      } finally { btn.disabled = false; }
     }
 
     // Собирает итоговый список игр: сначала по сохранённому порядку, новые/неупомянутые — в конец
@@ -1492,7 +1639,9 @@
           const yt = extractYouTubeId(v.url);
           const deleteBtn = (currentUser && currentUser.isAdmin) ? `<button onclick="event.stopPropagation(); window.deleteVideo('${v.id}')" class="absolute top-3 left-3 z-10 bg-black/60 hover:bg-red-600 text-white p-2 rounded-full backdrop-blur-md transition-colors" title="Удалить видео"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : '';
           const yearBadge = v.year ? `<span class="absolute top-3 right-3 z-10 bg-indigo-500/80 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur-md">${v.year}</span>` : '';
-          html += `<div class="liquid-glass-interactive rounded-2xl overflow-hidden cursor-pointer group flex flex-col relative" onclick="window.openVideoModal('${v.id}')"><div class="relative aspect-video bg-black overflow-hidden"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="${v.title}">${deleteBtn}${yearBadge}<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"><div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white"><i data-lucide="play" class="w-6 h-6 fill-white"></i></div></div></div><div class="p-4 flex flex-col flex-grow justify-between"><div><h3 class="font-medium text-sm text-white line-clamp-2">${v.title}</h3><p class="text-xs text-gray-400 mt-1">Автор: ${v.author}</p></div><div class="flex items-center justify-between text-[10px] text-gray-500 mt-4 pt-2 border-t border-white/5"><span>${(v.games||[]).join(', ')}</span></div></div></div>`;
+          // метка «только участники» видна лишь админу
+          const lockBadge = (currentUser && currentUser.isAdmin && v.visibility === 'members') ? `<span class="absolute bottom-3 left-3 z-10 bg-amber-500/80 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur-md flex items-center gap-1" title="Видят только участники"><i data-lucide="lock" class="w-3 h-3"></i> Участники</span>` : '';
+          html += `<div class="liquid-glass-interactive rounded-2xl overflow-hidden cursor-pointer group flex flex-col relative" onclick="window.openVideoModal('${v.id}')"><div class="relative aspect-video bg-black overflow-hidden"><img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="${v.title}">${deleteBtn}${yearBadge}${lockBadge}<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"><div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white"><i data-lucide="play" class="w-6 h-6 fill-white"></i></div></div></div><div class="p-4 flex flex-col flex-grow justify-between"><div><h3 class="font-medium text-sm text-white line-clamp-2">${v.title}</h3><p class="text-xs text-gray-400 mt-1">Автор: ${v.author}</p></div><div class="flex items-center justify-between text-[10px] text-gray-500 mt-4 pt-2 border-t border-white/5"><span>${(v.games||[]).join(', ')}</span></div></div></div>`;
         });
         html += `</div>`;
       }
@@ -1511,7 +1660,7 @@
     // --- Video Modal ---
     window.openVideoModal = id => {
       activeVideoId = id;
-      const v = videos.find(x => x.id === id); if (!v) return;
+      const v = videos.find(x => x.id === id); if (!v) return; // скрытые видео сюда не попадают
       $('modalIframe').src = `https://www.youtube.com/embed/${extractYouTubeId(v.url)}?autoplay=1`;
       $('modalVideoTitle').innerText = v.title;
       $('modalVideoAuthor').innerText = `Автор: ${v.author}`;
@@ -1537,7 +1686,17 @@
             if (currentView === 'videos') renderVideosView();
           } catch (err) { alert('Ошибка: ' + err.message); }
         };
-      } else { $('adminYearBlock').classList.add('hidden'); }
+        // настройка видимости видео
+        $('adminVisibilityBlock').classList.remove('hidden');
+        const visSelect = $('editVideoVisibilitySelect');
+        visSelect.value = v.visibility === 'members' ? 'members' : 'all';
+        $('saveVideoVisibilityBtn').onclick = async () => {
+          try {
+            await updateDoc(doc(db, 'videos', id), { visibility: visSelect.value === 'members' ? 'members' : 'all' });
+            alert('Видимость обновлена!');
+          } catch (err) { alert('Ошибка: ' + err.message); }
+        };
+      } else { $('adminYearBlock').classList.add('hidden'); $('adminVisibilityBlock').classList.add('hidden'); }
       setVideoHash(id);
       loadComments(id);
       showModal('videoModal','videoModalContainer');
@@ -1748,16 +1907,17 @@
       $('adminGameSelector').innerHTML = games.map(g => `<label class="flex items-center gap-1.5 text-xs text-gray-300 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5 cursor-pointer hover:bg-white/10"><input type="checkbox" value="${g}" class="rounded text-indigo-600 focus:ring-0"> ${g}</label>`).join('');
       $('videoAuthor').innerHTML = [...new Set(Object.values(authorsByGame).flat())].map(a => `<option value="${a}">${a}</option>`).join('');
       $('authorGame').innerHTML = games.map(g => `<option value="${g}">${g}</option>`).join('');
-      populateUsersSelect(); populateYearSelect(); populateEditGameSelect(); renderOrderUI(); populateEditAuthorSelect();
+      populateUsersSelect(); populateYearSelect(); populateEditGameSelect(); renderOrderUI(); populateEditAuthorSelect(); populateRolesUI();
     }
 
     async function addVideo(e) {
       e.preventDefault();
       const url = $('videoUrl').value.trim(), title = $('videoTitle').value.trim(), author = $('videoAuthor').value;
       const year = $('videoYear').value;
+      const visibility = $('videoVisibility').value === 'members' ? 'members' : 'all';
       const sel = Array.from(document.querySelectorAll('#adminGameSelector input:checked')).map(c => c.value);
       if (!sel.length) { alert('Выберите хотя бы одну игру'); return; }
-      await addDoc(collection(db, 'videos'), { url, title, author, games: sel, year: year || null, createdAt: serverTimestamp() });
+      await addDoc(collection(db, 'videos'), { url, title, author, games: sel, year: year || null, visibility, createdAt: serverTimestamp() });
       hideModal('adminModal','adminModalContainer'); e.target.reset();
       if (currentView === 'videos') renderVideosView();
     }
@@ -2062,7 +2222,7 @@
         });
       }
 
-      const ADMIN_TABS = { tabVideo: 'addVideoForm', tabAuthor: 'addAuthorForm', tabGame: 'addGameForm', tabUsers: 'addUserForm', tabSettings: 'settingsForm', tabEditGame: 'editGameForm', tabEditAuthor: 'editAuthorForm', tabOrder: 'orderGamesForm' };
+      const ADMIN_TABS = { tabVideo: 'addVideoForm', tabAuthor: 'addAuthorForm', tabGame: 'addGameForm', tabUsers: 'addUserForm', tabRoles: 'rolesForm', tabSettings: 'settingsForm', tabEditGame: 'editGameForm', tabEditAuthor: 'editAuthorForm', tabOrder: 'orderGamesForm' };
       Object.entries(ADMIN_TABS).forEach(([tabId, formId]) => {
         $(tabId).onclick = () => {
           Object.entries(ADMIN_TABS).forEach(([t, f]) => {
@@ -2071,6 +2231,7 @@
           });
           if (tabId === 'tabOrder') renderOrderUI();
           if (tabId === 'tabEditAuthor') populateEditAuthorSelect();
+          if (tabId === 'tabRoles') populateRolesUI();
         };
       });
 
@@ -2078,6 +2239,8 @@
       $('addAuthorForm').onsubmit = addAuthor;
       $('addGameForm').onsubmit = addGame;
       $('addUserForm').onsubmit = addMember;
+      $('rolesForm').onsubmit = saveRole;
+      $('rolesUserSelect').onchange = syncRoleValue;
       $('editGameForm').onsubmit = editGame;
       $('orderGamesForm').onsubmit = moveGame;
       $('editAuthorForm').onsubmit = renameAuthor;

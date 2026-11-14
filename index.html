@@ -301,11 +301,20 @@
       </div>
     </div>
 
-    <div id="membersContainer" class="order-3 lg:order-none relative lg:fixed lg:right-6 lg:top-32 z-40 liquid-glass p-4 rounded-2xl w-auto lg:w-64 mx-4 lg:mx-0 mb-4 lg:mb-0 transform transition-all duration-300">
+    <div class="order-3 lg:order-none relative lg:fixed lg:right-6 lg:top-32 z-40 flex flex-col gap-4 w-auto lg:w-64 mx-4 lg:mx-0 mb-4 lg:mb-0">
+    <div id="membersContainer" class="liquid-glass p-4 rounded-2xl transform transition-all duration-300">
       <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
         <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i> Участники
       </h3>
       <div id="membersList" class="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1"></div>
+    </div>
+
+    <div id="steamContainer" class="hidden liquid-glass p-4 rounded-2xl transform transition-all duration-300">
+      <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+        <i data-lucide="gamepad-2" class="w-4 h-4 text-sky-400"></i> Steam
+      </h3>
+      <div id="steamList" class="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1"></div>
+    </div>
     </div>
 
     <button id="randomBtn" class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 liquid-glass-interactive p-3 sm:p-4 rounded-full text-indigo-300 hover:text-white flex items-center justify-center group" title="Случайный откат">
@@ -455,6 +464,7 @@
         <button id="tabGame" class="text-gray-400 hover:text-white pb-2">Игры</button>
         <button id="tabUsers" class="text-gray-400 hover:text-white pb-2">Участники</button>
         <button id="tabRoles" class="text-gray-400 hover:text-white pb-2">Роли</button>
+        <button id="tabSteam" class="text-gray-400 hover:text-white pb-2">Steam</button>
         <button id="tabSettings" class="text-gray-400 hover:text-white pb-2">Эффекты</button>
         <button id="tabEditGame" class="text-gray-400 hover:text-white pb-2">Редактировать игру</button>
         <button id="tabEditAuthor" class="text-gray-400 hover:text-white pb-2">Редактировать автора</button>
@@ -517,6 +527,24 @@
           <label class="block text-xs text-gray-400 mb-1">Сейчас с ролью «Участник» (нажмите, чтобы выбрать)</label>
           <div id="rolesMembersList" class="flex flex-col gap-1 max-h-40 overflow-y-auto p-2 bg-white/5 rounded-xl border border-white/10"></div>
         </div>
+      </form>
+
+      <!-- Привязка Steam -->
+      <form id="steamForm" class="flex flex-col gap-4 hidden">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Пользователь сайта</label>
+          <select id="steamUserSelect" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-gray-900"></select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Ссылка на Steam-профиль или SteamID64</label>
+          <input type="text" id="steamLinkInput" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="https://steamcommunity.com/id/... или /profiles/...">
+        </div>
+        <p class="text-[10px] text-gray-500">Статус и игра видны, только если профиль в Steam открытый. Привязанные пользователи появляются в блоке Steam под списком участников.</p>
+        <div class="flex gap-2">
+          <button type="submit" id="steamSaveBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm">Привязать</button>
+          <button type="button" id="steamRemoveBtn" class="bg-red-500/20 hover:bg-red-500/40 text-red-300 font-medium px-4 py-2.5 rounded-xl text-sm">Отвязать</button>
+        </div>
+        <p id="steamStatusMsg" class="text-xs text-center hidden"></p>
       </form>
 
       <form id="settingsForm" class="flex flex-col gap-4 hidden">
@@ -933,6 +961,7 @@
             if (!window._dataLoaded) {
               loadData();
               window._dataLoaded = true;
+              startPresence();
             } else {
               // роль могла измениться — пересчитываем список доступных видео
               refreshVideos();
@@ -1214,7 +1243,9 @@
         row.className = 'flex items-center justify-between text-xs py-2 border-b border-white/5 last:border-0 hover:bg-white/5 rounded-lg px-2 transition-colors cursor-pointer group';
         row.onclick = (e) => { if (e.target.closest('.delete-member-btn')) return; window.openProfile(m.username); };
         const deleteBtn = (currentUser && currentUser.isAdmin) ? `<button onclick="event.stopPropagation(); window.removeMember('${m.id}')" class="delete-member-btn text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity p-1"><i data-lucide="x" class="w-3 h-3"></i></button>` : '';
-        row.innerHTML = `<div class="flex items-center gap-2 text-gray-300"><img src="${m.avatar || 'https://via.placeholder.com/20'}" class="w-5 h-5 rounded-full object-cover bg-gray-700"><span class="truncate max-w-[120px]">${m.username}</span></div>${deleteBtn}`;
+        const on = isSiteOnline(m.uid);
+        const statusHtml = `<span class="flex items-center gap-1 text-[10px] flex-shrink-0 ${on ? 'text-emerald-400' : 'text-gray-500'}"><span class="w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-400' : 'bg-gray-600'}"></span>${on ? 'В сети' : 'Не в сети'}</span>`;
+        row.innerHTML = `<div class="flex items-center gap-2 text-gray-300 min-w-0"><img src="${m.avatar || 'https://via.placeholder.com/20'}" class="w-5 h-5 rounded-full object-cover bg-gray-700 flex-shrink-0"><span class="truncate max-w-[90px]">${m.username}</span></div><div class="flex items-center gap-1">${statusHtml}${deleteBtn}</div>`;
         container.appendChild(row);
       });
       lucide.createIcons();
@@ -1372,11 +1403,18 @@
 
       onSnapshot(collection(db, 'users'), snap => {
         allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-        populateUsersSelect(); updateMembersList(); populateEditAuthorSelect(); populateRolesUI();
+        populateUsersSelect(); updateMembersList(); populateEditAuthorSelect(); populateRolesUI(); populateSteamUI(); onSteamUsersChanged();
       });
 
       onSnapshot(collection(db, 'members'), snap => {
         members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        updateMembersList();
+      });
+
+      // Присутствие на сайте (в сети / не в сети)
+      onSnapshot(collection(db, 'presence'), snap => {
+        presence = {};
+        snap.forEach(d => { presence[d.id] = d.data(); });
         updateMembersList();
       });
     }
@@ -1395,6 +1433,165 @@
       const select = $('selectUser'); if (!select) return;
       select.innerHTML = '<option value="">Выберите пользователя...</option>';
       allUsers.forEach(u => { if (!members.find(m => m.uid === u.uid)) select.innerHTML += `<option value="${u.uid}">${u.username}</option>`; });
+    }
+
+    // --- Присутствие на сайте ---
+    // Каждый вошедший раз в минуту обновляет свою отметку в коллекции presence.
+    // «В сети» = отметка свежее 2,5 минут. Отдельная коллекция нужна, чтобы эти записи не дёргали остальной сайт.
+    let presence = {};
+    const PRESENCE_INTERVAL = 60000;
+    const PRESENCE_TTL = 150000;
+
+    function sendHeartbeat(online = true) {
+      if (!currentUser || currentUser.isNew) return;
+      setDoc(doc(db, 'presence', currentUser.uid), { online, lastSeen: serverTimestamp() }).catch(() => {});
+    }
+
+    function startPresence() {
+      if (window._presenceStarted) return;
+      window._presenceStarted = true;
+      sendHeartbeat(true);
+      setInterval(() => sendHeartbeat(true), PRESENCE_INTERVAL);
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sendHeartbeat(true); });
+      window.addEventListener('pagehide', () => sendHeartbeat(false));
+    }
+
+    function isSiteOnline(uid) {
+      const p = uid && presence[uid];
+      if (!p || !p.online) return false;
+      const t = p.lastSeen ? p.lastSeen.toMillis() : Date.now();
+      return Date.now() - t < PRESENCE_TTL;
+    }
+
+    // --- Steam ---
+    // Адрес Cloudflare Worker (см. worker.js). Пока пусто — блок Steam не показывается.
+    const STEAM_PROXY = '';
+    const STEAM_POLL_MS = 30000;
+    let steamData = {};
+    let lastSteamIds = '';
+
+    function steamAgo(ts) {
+      const diff = Math.max(0, Date.now() / 1000 - ts);
+      if (diff < 3600) return `${Math.max(1, Math.floor(diff / 60))} мин назад`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
+      return `${Math.floor(diff / 86400)} д назад`;
+    }
+
+    function steamStatus(p) {
+      if (!p) return { text: 'Статус недоступен', cls: 'text-gray-500', rank: 0, last: 0 };
+      if (p.gameextrainfo) return { text: `Играет в ${p.gameextrainfo}`, cls: 'text-indigo-300', rank: 4, last: 0 };
+      const st = p.personastate;
+      if ([1, 2, 5, 6].includes(st)) return { text: 'В сети', cls: 'text-emerald-400', rank: 3, last: 0 };
+      if ([3, 4].includes(st)) return { text: 'Нет на месте', cls: 'text-amber-400', rank: 2, last: 0 };
+      if (p.lastlogoff) return { text: `Был в сети ${steamAgo(p.lastlogoff)}`, cls: 'text-gray-400', rank: 1, last: p.lastlogoff };
+      if (p.communityvisibilitystate !== undefined && p.communityvisibilitystate !== 3) return { text: 'Профиль скрыт', cls: 'text-gray-500', rank: 0, last: 0 };
+      return { text: 'Не в сети', cls: 'text-gray-500', rank: 1, last: 0 };
+    }
+
+    function renderSteamPanel() {
+      const box = $('steamContainer'), list = $('steamList'); if (!box || !list) return;
+      const users = allUsers.filter(u => u.steamId && u.username);
+      if (!STEAM_PROXY || users.length === 0) { box.classList.add('hidden'); return; }
+      box.classList.remove('hidden');
+      list.innerHTML = '';
+      users.map(u => ({ u, p: steamData[u.steamId], s: steamStatus(steamData[u.steamId]) }))
+        .sort((a, b) => b.s.rank - a.s.rank || b.s.last - a.s.last)
+        .forEach(({ u, p, s }) => {
+          const row = document.createElement('div');
+          row.className = 'flex items-center gap-2 text-xs py-1.5 px-2 -mx-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer';
+          row.onclick = () => window.openProfile(u.username);
+          const img = document.createElement('img');
+          img.src = (p && p.avatar) || u.avatar || 'https://via.placeholder.com/28';
+          img.className = 'w-7 h-7 rounded-full object-cover bg-gray-700 flex-shrink-0';
+          const col = document.createElement('div'); col.className = 'min-w-0 flex flex-col';
+          const name = document.createElement('span'); name.className = 'truncate text-gray-200'; name.textContent = u.username;
+          const st = document.createElement('span'); st.className = `truncate text-[10px] ${s.cls}`; st.textContent = s.text;
+          col.appendChild(name); col.appendChild(st);
+          row.appendChild(img); row.appendChild(col);
+          list.appendChild(row);
+        });
+    }
+
+    async function fetchSteam() {
+      if (!STEAM_PROXY) return;
+      const ids = allUsers.filter(u => u.steamId).map(u => u.steamId);
+      if (!ids.length) { renderSteamPanel(); return; }
+      try {
+        const r = await fetch(`${STEAM_PROXY}/summaries?ids=${ids.join(',')}`);
+        if (!r.ok) throw new Error('steam ' + r.status);
+        const j = await r.json();
+        const map = {};
+        ((j.response && j.response.players) || []).forEach(p => { map[p.steamid] = p; });
+        steamData = map;
+      } catch (e) { /* оставляем прошлые данные */ }
+      renderSteamPanel();
+    }
+
+    function onSteamUsersChanged() {
+      const key = allUsers.filter(u => u.steamId).map(u => u.steamId).sort().join(',');
+      if (key !== lastSteamIds) { lastSteamIds = key; fetchSteam(); }
+      else renderSteamPanel();
+    }
+
+    async function resolveSteamId(input) {
+      input = input.trim();
+      if (/^\d{17}$/.test(input)) return input;
+      let m = input.match(/steamcommunity\.com\/profiles\/(\d{17})/);
+      if (m) return m[1];
+      m = input.match(/steamcommunity\.com\/id\/([^\/?#]+)/);
+      const vanity = m ? m[1] : (/^[A-Za-z0-9_-]{2,32}$/.test(input) ? input : null);
+      if (!vanity) throw new Error('Не удалось распознать ссылку');
+      const r = await fetch(`${STEAM_PROXY}/resolve?vanity=${encodeURIComponent(vanity)}`);
+      const j = await r.json();
+      if (j.response && j.response.success === 1) return j.response.steamid;
+      throw new Error('Профиль Steam не найден');
+    }
+
+    function syncSteamInput() {
+      const u = allUsers.find(x => x.uid === $('steamUserSelect').value);
+      $('steamLinkInput').value = u && u.steamId ? `https://steamcommunity.com/profiles/${u.steamId}` : '';
+    }
+
+    function populateSteamUI() {
+      const sel = $('steamUserSelect'); if (!sel) return;
+      const prev = sel.value;
+      sel.innerHTML = '';
+      const list = allUsers.filter(u => u.username).sort((a, b) => a.username.localeCompare(b.username, 'ru'));
+      if (list.length === 0) sel.add(new Option('Нет пользователей', ''));
+      list.forEach(u => sel.add(new Option(u.username + (u.steamId ? ' — Steam привязан' : ''), u.uid)));
+      if (prev && list.some(u => u.uid === prev)) sel.value = prev;
+      if (document.activeElement !== $('steamLinkInput')) syncSteamInput();
+    }
+
+    async function saveSteam(e) {
+      e.preventDefault();
+      const uid = $('steamUserSelect').value; if (!uid) return;
+      const status = $('steamStatusMsg'), btn = $('steamSaveBtn');
+      const show = (msg, ok) => { status.classList.remove('hidden'); status.className = 'text-xs text-center ' + (ok ? 'text-emerald-400' : 'text-red-400'); status.innerText = msg; };
+      if (!STEAM_PROXY) return show('Сначала укажите адрес воркера в STEAM_PROXY (см. инструкцию)', false);
+      const raw = $('steamLinkInput').value.trim();
+      if (!raw) return show('Вставьте ссылку на профиль', false);
+      btn.disabled = true;
+      try {
+        const steamId = await resolveSteamId(raw);
+        const r = await fetch(`${STEAM_PROXY}/summaries?ids=${steamId}`);
+        const j = await r.json();
+        const p = j.response && j.response.players && j.response.players[0];
+        if (!p) throw new Error('Профиль Steam не найден');
+        await updateDoc(doc(db, 'users', uid), { steamId });
+        show(`Привязан Steam: ${p.personaname}`, true);
+      } catch (err) { show('Ошибка: ' + err.message, false); }
+      finally { btn.disabled = false; }
+    }
+
+    async function removeSteam() {
+      const uid = $('steamUserSelect').value; if (!uid) return;
+      const status = $('steamStatusMsg');
+      try {
+        await updateDoc(doc(db, 'users', uid), { steamId: null });
+        $('steamLinkInput').value = '';
+        status.classList.remove('hidden'); status.className = 'text-xs text-center text-emerald-400'; status.innerText = 'Steam отвязан';
+      } catch (err) { status.classList.remove('hidden'); status.className = 'text-xs text-center text-red-400'; status.innerText = 'Ошибка: ' + err.message; }
     }
 
     // --- Роли (вкладка «Роли» в админке) ---
@@ -1907,7 +2104,7 @@
       $('adminGameSelector').innerHTML = games.map(g => `<label class="flex items-center gap-1.5 text-xs text-gray-300 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5 cursor-pointer hover:bg-white/10"><input type="checkbox" value="${g}" class="rounded text-indigo-600 focus:ring-0"> ${g}</label>`).join('');
       $('videoAuthor').innerHTML = [...new Set(Object.values(authorsByGame).flat())].map(a => `<option value="${a}">${a}</option>`).join('');
       $('authorGame').innerHTML = games.map(g => `<option value="${g}">${g}</option>`).join('');
-      populateUsersSelect(); populateYearSelect(); populateEditGameSelect(); renderOrderUI(); populateEditAuthorSelect(); populateRolesUI();
+      populateUsersSelect(); populateYearSelect(); populateEditGameSelect(); renderOrderUI(); populateEditAuthorSelect(); populateRolesUI(); populateSteamUI();
     }
 
     async function addVideo(e) {
@@ -2195,7 +2392,8 @@
       $('editProfileForm').onsubmit = handleEditProfile;
       $('setupForm').onsubmit = handleSetupProfile;
       
-      $('logoutBtn').onclick = () => { 
+      $('logoutBtn').onclick = async () => { 
+        if (currentUser && currentUser.uid) { try { await setDoc(doc(db, 'presence', currentUser.uid), { online: false, lastSeen: serverTimestamp() }); } catch (e) {} }
         signOut(auth); 
         hideModal('profileModal','profileModalContainer'); 
         currentView = 'games'; 
@@ -2222,7 +2420,7 @@
         });
       }
 
-      const ADMIN_TABS = { tabVideo: 'addVideoForm', tabAuthor: 'addAuthorForm', tabGame: 'addGameForm', tabUsers: 'addUserForm', tabRoles: 'rolesForm', tabSettings: 'settingsForm', tabEditGame: 'editGameForm', tabEditAuthor: 'editAuthorForm', tabOrder: 'orderGamesForm' };
+      const ADMIN_TABS = { tabVideo: 'addVideoForm', tabAuthor: 'addAuthorForm', tabGame: 'addGameForm', tabUsers: 'addUserForm', tabRoles: 'rolesForm', tabSteam: 'steamForm', tabSettings: 'settingsForm', tabEditGame: 'editGameForm', tabEditAuthor: 'editAuthorForm', tabOrder: 'orderGamesForm' };
       Object.entries(ADMIN_TABS).forEach(([tabId, formId]) => {
         $(tabId).onclick = () => {
           Object.entries(ADMIN_TABS).forEach(([t, f]) => {
@@ -2232,6 +2430,7 @@
           if (tabId === 'tabOrder') renderOrderUI();
           if (tabId === 'tabEditAuthor') populateEditAuthorSelect();
           if (tabId === 'tabRoles') populateRolesUI();
+          if (tabId === 'tabSteam') populateSteamUI();
         };
       });
 
@@ -2241,6 +2440,13 @@
       $('addUserForm').onsubmit = addMember;
       $('rolesForm').onsubmit = saveRole;
       $('rolesUserSelect').onchange = syncRoleValue;
+      $('steamForm').onsubmit = saveSteam;
+      $('steamRemoveBtn').onclick = removeSteam;
+      $('steamUserSelect').onchange = syncSteamInput;
+      // Статусы Steam обновляются раз в 30 секунд, пока вкладка открыта; «был в сети N назад» и «в сети» пересчитываются локально
+      setInterval(() => { if (document.visibilityState === 'visible') fetchSteam(); }, STEAM_POLL_MS);
+      setInterval(() => { updateMembersList(); renderSteamPanel(); }, 30000);
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fetchSteam(); });
       $('editGameForm').onsubmit = editGame;
       $('orderGamesForm').onsubmit = moveGame;
       $('editAuthorForm').onsubmit = renameAuthor;
